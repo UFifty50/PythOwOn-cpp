@@ -367,5 +367,5 @@ FodyWeavers.xsd
 bin/
 *.exe
 *.sln
-*.vcxproj
+*.vcxproj*
 !vendor/premake/premake5.exe
