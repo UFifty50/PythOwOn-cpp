@@ -1,0 +1,3 @@
+[submodule "PythOwOn/vendor/fmt"]
+	path = PythOwOn/vendor/fmt
+	url = https://github.com/UFifty50/fmt-premake.git
