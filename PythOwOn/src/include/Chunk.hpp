@@ -1,30 +1,14 @@
 #ifndef CHUNK_HPP
 #define CHUNK_HPP
 
-//#include "value.hpp"
 #include <vector>
 #include <string>
+#include <variant>
 
-class Chunk {
-private:
-    int count;
-    std::vector<OpCode> code;
-    std::vector<int> lines;
-    //ValueArray constants;
+#include "Value.hpp"
 
-public:
-    Chunk();
-    ~Chunk();
 
-    void write(OpCode byte);
-
-#if defined(_DEBUG)
-    void disassemble(std::string name);
-    void disassembleInstruction(int* offset);
-#endif
-};
-
-enum class OpCode {
+enum OpCode {
     CONSTANT,
     CONSTANT_LONG,
     NONE,
@@ -57,6 +41,27 @@ enum class OpCode {
     DUP,
     CALL,
     RETURN,
+};
+
+class Chunk {
+private:
+    std::vector<int> lines;
+
+public:
+    Chunk();
+    ~Chunk();
+
+    void write(uint8_t byte, int line);
+    int addConstant(Value value);
+    void writeConstant(Value value, int line);
+
+    std::vector<uint8_t> code;
+    ValueArray constants;
+
+#if defined(TRACE_EXECUTION)
+    void disassemble(std::string name);
+    int disassembleInstruction(int offset);
+#endif
 };
 
 #endif

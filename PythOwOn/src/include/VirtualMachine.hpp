@@ -2,15 +2,42 @@
 #define VM_HPP
 
 #include <string>
+#include <vector>
+#include <functional>
 
+#include "Chunk.hpp"
+#include "Value.hpp"
+
+
+enum class InterpretResult {
+    OK,
+    COMPILE_ERROR,
+    RUNTIME_ERROR
+};
 
 class VM {
-    private:
-        Chunk* chunk;
+private:
+    Chunk* chunk;
+    uint8_t* ip;
+    Stack<Value> stack;
 
-    public:
-        VM();    // initVM()
-        ~VM();   // freeVM()
+public:
+    VM();    // initVM()
+    ~VM();   // freeVM()
+
+    
+    inline uint8_t readByte() { return *ip++; }
+    
+    inline Value readConstant() { return chunk->constants[readByte()]; }
+    
+    template<typename T> inline void binaryOp(T op) {
+        Value b = stack.pop();
+        Value a = stack.pop();
+        stack.push(op(a, b));
+    }
+
+    InterpretResult interpret(Chunk* chunk);
+    InterpretResult run();
 };
 
 #endif

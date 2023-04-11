@@ -1,29 +1,183 @@
+#include <string>
+
+#include "Common.hpp"
 #include "Chunk.hpp"
 
 
 Chunk::Chunk() {
-    count = 0;
     code = {};
     lines = {};
 }
 
 Chunk::~Chunk() = default;
 
-void Chunk::write(OpCode byte) {
+void Chunk::write(uint8_t byte, int line) {
     code.emplace_back(byte);
-    count++;
+    lines.emplace_back(line);
 }
+
+int Chunk::addConstant(Value value) {
+    constants.emplace_back(value);
+    return constants.size() - 1;
+}
+
+void Chunk::writeConstant(Value value, int line) {
+    int index = addConstant(value);
+
+    if (index < 256) {
+        write(OpCode::CONSTANT, line);
+        write((uint8_t)index, line);
+    } else {
+        write(OpCode::CONSTANT_LONG, line);
+        write((uint8_t)(index & 0xff), line);
+        write((uint8_t)((index >> 8) & 0xff), line);
+        write((uint8_t)((index >> 16) & 0xff), line);
+    }
+}
+
 
 #if defined(_DEBUG)
 
 #include <iostream>
 
+static int simpleInstruction(std::string name, int offset) {
+    FMT_PRINT("{}\n", name);
+    return offset + 1;
+}
+
+static int constantInstruction(std::string name, const Chunk* chunk, int offset) {
+    int constant = chunk->code[offset + 1];
+    FMT_PRINT("{:10} {:04}  ", name, constant, chunk->constants[constant]);
+    printValue(chunk->constants[constant]);
+    FMT_PRINT("\n");
+    return offset + 2;
+}
+
+
+static int constantLongInstruction(std::string name, const Chunk* chunk, int offset) {
+        uint32_t constant = (chunk->code[offset + 1])
+                            | (chunk->code[offset + 2] << 8)
+                            | (chunk->code[offset + 3] << 16);
+        FMT_PRINT("{:10} {:04}  ", name, constant);
+        printValue(chunk->constants[constant]);
+        FMT_PRINT("\n");
+        return offset + 4;
+}
+
+static int byteInstruction(std::string name, const Chunk* chunk, int offset) {
+    return 1;
+}
+
+static int jumpInstruction(std::string name, const Chunk* chunk, int j, int offset) {
+    return 1;
+}
+
+#if defined(TRACE_EXECUTION)
 
 void Chunk::disassemble(std::string name) {
-    fmt::printt("== {} ==\n", name);
-    for (int offset = 0; offset < count;) {
-        offset = disassembleInstruction(&offset);
+    FMT_PRINT("== {} ==\n", name);
+    for (int offset = 0; offset < code.size();) {
+        offset = disassembleInstruction(offset);
+    }
+    FMT_PRINT("\n");
+}
+
+int Chunk::disassembleInstruction(int offset) {
+    FMT_PRINT("{:04} ", offset);
+    if (offset > 0 && lines[offset] == lines[offset - 1]) {
+        FMT_PRINT("   | ");
+    }
+    else {
+        FMT_PRINT("{:4} ", lines[offset]);
+    }
+
+    OpCode instruction = static_cast<OpCode>(code[offset]);
+
+    switch (instruction) {
+        case OpCode::RETURN:
+            return simpleInstruction("RETURN", offset);
+
+        case OpCode::CONSTANT:
+            return constantInstruction("CONSTANT", this, offset);
+
+        case OpCode::CONSTANT_LONG:
+            return constantLongInstruction("CONSTANT_LONG", this, offset);
+
+        case OpCode::NONE:
+            return simpleInstruction("NONE", offset);
+
+        case OpCode::TRUE:
+            return simpleInstruction("TRUE", offset);
+
+        case OpCode::FALSE:
+            return simpleInstruction("FALSE", offset);
+
+        case OpCode::POP:
+            return simpleInstruction("POP", offset);
+
+        case OpCode::GET_LOCAL:
+            return byteInstruction("GET_LOCAL", this, offset);
+
+        case OpCode::SET_LOCAL:
+            return byteInstruction("SET_LOCAL", this, offset);
+
+        case OpCode::GET_GLOBAL:
+            return constantInstruction("GET_GLOBAL", this, offset);
+
+        case OpCode::DEF_GLOBAL:
+            return constantInstruction("DEF_GLOBAL", this, offset);
+
+        case OpCode::SET_GLOBAL:
+            return constantInstruction("SET_GLOBAL", this, offset);
+
+        case OpCode::EQUAL:
+            return simpleInstruction("EQUAL", offset);
+
+        case OpCode::GREATER:
+            return simpleInstruction("GREATER", offset);
+
+        case OpCode::LESS:
+            return simpleInstruction("LESS", offset);
+
+        case OpCode::ADD:
+            return simpleInstruction("ADD", offset);
+
+        case OpCode::MULTIPLY:
+            return simpleInstruction("MULTIPLY", offset);
+
+        case OpCode::DIVIDE:
+            return simpleInstruction("DIVIDE", offset);
+
+        case OpCode::NOT:
+            return simpleInstruction("NOT", offset);
+
+        case OpCode::LEFTSHIFT:
+            return simpleInstruction("LEFTSHIFT", offset);
+
+        case OpCode::RIGHTSHIFT:
+            return simpleInstruction("RIGHTSHIFT", offset);
+
+        case OpCode::MODULO:
+            return simpleInstruction("MODULO", offset);
+
+        case OpCode::NEGATE:
+            return simpleInstruction("NEGATE", offset);
+
+        case OpCode::PRINT:
+            return simpleInstruction("PRINT", offset);
+
+        case OpCode::JUMP:
+            return jumpInstruction("JUMP", this, 1, offset);
+
+        case OpCode::JUMP_FALSE:
+            return jumpInstruction("JUMP_FALSE", this, 1, offset);
+    
+        default:
+            FMT_PRINT("Uknown opcode {}\n", (int)instruction);
+            return offset + 1;
     }
 }
+
+#endif
 
 #endif

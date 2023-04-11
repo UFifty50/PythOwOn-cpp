@@ -1,13 +1,13 @@
 workspace "PythOwOn"
     architecture "x86_64"
-    configurations { "Debug", "Release"}
+    configurations { "Logging", "Debug", "Release"}
     startproject "PythOwOn"
     debugdir "bin/%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}/"
 
 outputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 includeDirs = {}
-includeDirs["fmt"] = "fmt/include"
+includeDirs["fmt"] = "PythOwOn/vendor/fmt/include"
 
 group "Dependencies"
     include "PythOwOn/vendor/fmt"
@@ -18,8 +18,13 @@ project "PythOwOn"
     location "PythOwOn"
     kind "ConsoleApp"
     staticruntime "on"
+    systemversion "latest"
     language "C++"
     cppdialect "C++20"
+
+    targetdir ("../bin/" .. outputDir .. "/")
+	objdir ("bin/intermediate/" .. outputDir .. "/")
+
     
     externalanglebrackets "on"
     externalwarnings "off"
@@ -35,36 +40,39 @@ project "PythOwOn"
 
     includedirs { 
         "%{prj.name}/src/include/",
+        "%{includeDirs.fmt}"
     }
 
-  --  links {}
-
-    prebuildcommands {
-            "{RMDIR} ../bin/" .. outputDir
+    links {
+        "fmt"
     }
 
-    postbuildcommands {
-            "{MKDIR} ../bin/" .. outputDir .. "/",
-            "{COPYFILE} %{cfg.buildtarget.relpath} ../bin/" .. outputDir
-    }
+  --  prebuildcommands {
+   --         "{DEL} ../bin/" .. outputDir .. "/%{cfg.buildtarget.name}",
+  --          "{RMDIR} ../bin/",
+  --  }
+
+  --  postbuildcommands {
+ --           "{MKDIR} ../bin/" .. outputDir .. "/",
+  --          "{COPYFILE} %{cfg.buildtarget.relpath} ../bin/" .. outputDir .. "/",
+  --  }
 
     filter "system:linux"
         pic "on"
-        systemversion "latest"
-
-    --    links {}
-
-      --  defines {}
+        --    links {}
+        --  defines {}
 
     filter "system:windows"
-        systemversion "latest"
-
      --   links {}
-
      --   defines {}
 
     filter "toolset:msc*"
         buildoptions "/analyze:external-"
+
+    filter "configurations:Logging"
+        defines { "_DEBUG", "TRACE_EXECUTION" }
+        runtime "Debug"
+        symbols "on"
 
     filter "configurations:Debug"
         defines { "_DEBUG" }
