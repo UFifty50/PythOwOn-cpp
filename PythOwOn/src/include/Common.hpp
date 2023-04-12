@@ -28,10 +28,9 @@ enum class TokenType {                  //TODO: add const token (maybe?)
     COLON,
 
     // single/double char tokens
-    BANG, BANG_EQ,
-    EQ, EQ_EQ, GREATER,
-    GREATER_EQ, LESS,
-    LESS_EQ, LSHIFT, RSHIFT,
+    BANG, BANG_EQ, EQ, EQ_EQ, GREATER,
+    GREATER_EQ, LESS, LESS_EQ, LSHIFT,
+    RSHIFT, AMPERSAND, PIPE, CARET,
 
     // literals
     IDENTIFIER, STR, NUM,

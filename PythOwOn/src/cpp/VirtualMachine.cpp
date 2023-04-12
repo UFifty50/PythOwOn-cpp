@@ -11,6 +11,15 @@ VM::VM() {
 
 VM::~VM() = default;
 
+void VM::setChunk(Chunk* chunk) {
+    this->chunk = chunk;
+    ip = chunk->code.data();
+}
+
+Chunk* VM::getChunk() {
+    return chunk;
+}
+
 InterpretResult VM::run() {
     while (true) {
 #if defined(TRACE_EXECUTION)
@@ -24,7 +33,7 @@ InterpretResult VM::run() {
 
         chunk->disassembleInstruction((int)(ip - chunk->code.data()));
 #endif
-        uint8_t instruction = readByte();
+        size_t instruction = readByte();
         switch (instruction) {
             case OpCode::CONSTANT: {
                 Value constant = readConstant();

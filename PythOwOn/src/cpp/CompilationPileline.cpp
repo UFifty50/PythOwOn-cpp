@@ -1,31 +1,35 @@
-#include "Common.hpp"
 #include "CompilationPileline.hpp"
+#include "VirtualMachine.hpp"
+#include "Common.hpp"
+#include "Chunk.hpp"
 
 
-CompilationPileline::CompilationPileline() = default;
+CompilationPileline::CompilationPileline() {
+    compiler = new Compiler();
+    vm = new VM();
+}
 
 CompilationPileline::~CompilationPileline() {
-    delete scanner;
+    delete compiler;
+    delete vm;
 }
 
 InterpretResult CompilationPileline::interpret(std::string source) {
-    compile(source);
-    return InterpretResult::OK;
+    Chunk* chunk = new Chunk();
+
+    if (!compile(source, chunk)) {
+        delete chunk;
+        return InterpretResult::COMPILE_ERROR;
+    }
+
+    vm->setChunk(chunk);
+
+    InterpretResult result = vm->run();
+
+    delete chunk;
+    return result;
 }
 
-void CompilationPileline::compile(std::string source) {
-    scanner = new Scanner(source);
-
-    int line = -1;
-    while (true) {
-        Token token = scanner->scanToken();
-        if (token.line != line) {
-            FMT_PRINT("{:4d} ", token.line);
-            line = token.line;
-        } else {
-            FMT_PRINT("   | ");
-        }
-        FMT_PRINT("{:2d} '{}'\n", (int)token.type, token.lexeme);
-        if (token.type == TokenType::EOF) break;
-    }
+bool CompilationPileline::compile(std::string source, Chunk* chunk) {
+    return compiler->compile(source, chunk);
 }

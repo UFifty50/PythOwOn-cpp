@@ -15,7 +15,7 @@
 class VM {
 private:
     Chunk* chunk;
-    uint8_t* ip;
+    size_t* ip;
     Stack<Value> stack;
 
 public:
@@ -23,7 +23,7 @@ public:
     ~VM();   // freeVM()
 
     
-    inline uint8_t readByte() { return *ip++; }
+    inline size_t readByte() { return *ip++; }
     
     inline Value readConstant() { return chunk->constants[readByte()]; }
     
@@ -33,6 +33,8 @@ public:
         stack.push(op(a, b));
     }
 
+    void setChunk(Chunk* chunk);
+    Chunk* getChunk();
     InterpretResult run();
 };
 

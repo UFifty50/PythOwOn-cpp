@@ -2,20 +2,24 @@
 #define COMPILEPIPE_HPP
 
 #include <string>
+
+#include "Chunk.hpp"
 #include "Common.hpp"
-#include "Scanner.hpp"
+#include "Compiler.hpp"
+#include "VirtualMachine.hpp"
 
 
 class CompilationPileline {
 private:
-    Scanner* scanner;
+    VM* vm;
+    Compiler* compiler;
 
 public:
     CompilationPileline();
     ~CompilationPileline();
 
     InterpretResult interpret(std::string source);
-    void compile(std::string source);
+    bool compile(std::string source, Chunk* chunk);
 };
 
 #endif
