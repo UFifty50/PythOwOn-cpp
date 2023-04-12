@@ -24,6 +24,10 @@ private:
 
     void defaultBehaviour();
     void defaultError();
+    void defaultT(std::string arg);
+
+    template<typename T>
+    inline bool isArg(T arg, std::map<T, Arg> argMap);
 
 public:
     ArgumentParser(int argc, char** argv);
