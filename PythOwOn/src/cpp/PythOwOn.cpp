@@ -1,11 +1,15 @@
 #include <iostream>
+#include <fstream>
 
 #include "ArgumentParser.hpp"
 #include "VirtualMachine.hpp"
+#include "CompilationPileline.hpp"
+#include "Common.hpp"
 #include "Chunk.hpp"
 
 
 void repl(std::string _);
+void runFile(std::string path);
 
 int main(int argc, char** argv) {
     ArgumentParser argParser(argc, argv);
@@ -15,25 +19,19 @@ int main(int argc, char** argv) {
                                           }
                               });
 
-    argParser.registerLongArg("file", {"Run a PythOwOn file", [](std::string arg) {
-                                         std::cout << "not implemented yet" << std::endl;
-                                       }
-                              });
+    argParser.registerLongArg("file", {"Run a PythOwOn file", runFile, true});
 
-    argParser.registerLongArg("interactive", {"Start PythOwOn in interactive mode", repl});
+    argParser.registerLongArg("interpret", {"Start PythOwOn in interactive mode", repl});
 
-    argParser.registerLongArg("compile", {"Compile a PythOwOn file into bytecode.", [](std::string _){}});
+    argParser.registerLongArg("compile", {"Compile a PythOwOn file into bytecode.", [](std::string _){}, true});
 
-   // argParser.aliasLongArg("help", 'h');
-    argParser.aliasLongArg("version", 'v');
     argParser.aliasLongArg("file", 'f');
-    argParser.aliasLongArg("interactive", 'i');
+    argParser.aliasLongArg("interpret", 'i');
     argParser.aliasLongArg("compile", 'c');
 
     argParser.setDefaultHelp();
 
-    argParser.setDefaultBehaviour("interactive");
-
+    argParser.setDefaultBehaviour("i");
 
     argParser.parse();
 
@@ -42,48 +40,39 @@ int main(int argc, char** argv) {
 
 void repl(std::string _) {
     std::string line;
-    VM* vm = new VM();
+    CompilationPileline* pipeline = new CompilationPileline();
 
     while (true) {
         FMT_PRINT("PythOwOn <<< ");
 
         // get line input
-        if (!(std::cin >> line)) {
+        if (!getline(std::cin, line)) {
             FMT_PRINT("\n");
             break;
         }
 
-        vm->interpret(line);
+        pipeline->interpret(line);
+    }
+
+    delete pipeline;
+}
+
+static void runFile(std::string path) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        FMT_PRINT("Could not open file \"{}\".\n", path);
+        exit(74);
     }
     
-    /*    VM* vm = new VM();
-    Chunk* chunk = new Chunk();
+    std::string source((std::istreambuf_iterator<char>(file)),
+                  (std::istreambuf_iterator<char>()));
+    file.close();
 
-    int constant = chunk->addConstant(1.2);
-    chunk->write(OpCode::CONSTANT, 1);
-    chunk->write(constant, 1);
+    CompilationPileline* pipeline = new CompilationPileline();
+    InterpretResult result = pipeline->interpret(source);
 
-    constant = chunk->addConstant(3.4);
-    chunk->write(OpCode::CONSTANT, 2);
-    chunk->write(constant, 2);
+    if (result == InterpretResult::COMPILE_ERROR) exit(65);
+    if (result == InterpretResult::RUNTIME_ERROR) exit(70);
 
-    chunk->write(OpCode::ADD, 2);
-
-    constant = chunk->addConstant(5.6);
-    chunk->write(OpCode::CONSTANT, 2);
-    chunk->write(constant, 2);
-
-    chunk->write(OpCode::DIVIDE, 2);
-    chunk->write(OpCode::NEGATE, 2);
-    chunk->write(OpCode::RETURN, 3);
-
-#if defined(TRACE_EXECUTION)
-    chunk->disassemble("test chunk");
-#endif
-
-    vm->interpret(chunk);
-    vm->run();
-
-    delete vm;
-    delete chunk; */
+    delete pipeline;
 }

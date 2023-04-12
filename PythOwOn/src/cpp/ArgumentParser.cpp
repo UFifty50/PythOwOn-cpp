@@ -1,9 +1,10 @@
 #include <stdexcept>
-#include <iostream>
 #include <sstream>
 
+#include "fmt/core.h"
+
+#include "Common.hpp"
 #include "ArgumentParser.hpp"
-#include <iomanip>
 
 
 ArgumentParser::ArgumentParser(int argc, char** argv) {
@@ -20,28 +21,71 @@ void ArgumentParser::defaultBehaviour() {
     if (defaultArg.empty()) {
         throw std::invalid_argument("No default behaviour set");
     } else {
-        auto defaultArgIt = longArgs.find(defaultArg);
-        if (defaultArgIt == longArgs.end())
-            auto defaultArgIt = aliasArgs.find(defaultArg[0]);
+        auto defaultArgIt = std::make_pair(
+            longArgs.find(defaultArg),
+            aliasArgs.find(defaultArg[0])
+        );
+
+        // execute the callback from the first non-end iterator
+        if (defaultArgIt.first != longArgs.end()) {
+            defaultArgIt.first->second.callback("");
+        } else if (defaultArgIt.second != aliasArgs.end()) {
+            defaultArgIt.second->second.callback("");
+        } else {
+            FMT_PRINT("This shouldn't happen...");
+            exit(-1);
+        }
+    }
+}
+
+void ArgumentParser::defaultError() {
+    if (errorArg.empty()) {
+        throw std::invalid_argument("No default error set");
+    } else {
+        auto errorArgIt = std::make_pair(
+            longArgs.find(errorArg),
+            aliasArgs.find(errorArg[0])
+        );
         
-        defaultArgIt->second.callback("");
+        // execute the callback from the first non-end iterator
+        if (errorArgIt.first != longArgs.end()) {
+            errorArgIt.first->second.callback("");
+        } else if (errorArgIt.second != aliasArgs.end()) {
+            errorArgIt.second->second.callback("");
+        } else {
+            FMT_PRINT("This shouldn't happen...");
+            exit(-1);
+        }
     }
 }
 
 void ArgumentParser::setDefaultBehaviour(std::string defaultArg) {
-    if (longArgs.count(defaultArg) || aliasArgs.count(defaultArg[0])) {
+    if (longArgs.contains(defaultArg) || (aliasArgs.contains(defaultArg[0]) && defaultArg.length() == 1)) {
         this->defaultArg = defaultArg;
     } else {
-        throw std::invalid_argument("Unknown argument when setting defaultBehaviour: " + defaultArg);
+        throw std::invalid_argument("Unknown/Unset argument when setting defaultBehaviour: " + defaultArg);
     }
+}
 
+void ArgumentParser::setDefaultError(std::string errorArg) {
+    if (longArgs.contains(errorArg) || (aliasArgs.contains(errorArg[0]) && errorArg.length() == 1)){
+        this->errorArg = errorArg;
+    } else {
+        throw std::invalid_argument("Unknown/Unset argument when setting defaultError: " + errorArg);
+    }
 }
 
 void ArgumentParser::setDefaultHelp() {
     auto printHelp = [&](std::string _) {
-        std::cout << "Usage: " << args[0] << " [options] [file]\n\n"
-                  << "Options:\n";
+        FMT_PRINT("Usage: {} [options]\n\nOptions:\n", args[0]);
         // print out help information for each long argument
+        size_t maxLongArgLength = 0;
+        for (auto const& [key, value] : longArgs) {
+            Arg arg = value;
+            std::string longArg = "--" + key;
+            maxLongArgLength = std::max(maxLongArgLength, longArg.length());
+        }
+
         for (auto const& [key, value] : longArgs) {
             Arg arg = value;
             std::string longArg = "--" + key;
@@ -49,8 +93,10 @@ void ArgumentParser::setDefaultHelp() {
             if (arg.alias != '\0') {
                 shortArg = "-" + std::string(1, arg.alias);
             }
-            std::cout << std::setw(5) << std::left << shortArg << std::setw(17)
-                      << longArg << arg.help << std::endl;
+
+            std::string reqVal = fmt::format("{:<7}", arg.requiresArg ? "<VALUE>" : "");
+            // TODO: make this dynamic from the length of the longest argument
+            FMT_PRINT("{:<5} {} {:<{}} {}\n", shortArg, longArg, reqVal, 21 + reqVal.length() - longArg.length(), arg.help);
         }
     };
 
@@ -58,6 +104,7 @@ void ArgumentParser::setDefaultHelp() {
     aliasLongArg("help", 'h');
 
     setDefaultBehaviour("help");
+    setDefaultError("help");
 }
 
 void ArgumentParser::registerLongArg(std::string argName,
@@ -74,41 +121,53 @@ void ArgumentParser::aliasLongArg(std::string arg, char alias) {
 }
 
 void ArgumentParser::parse() {
+    std::vector<std::pair<Arg*, std::string>> toExecute;
+
     if (args.size() == 1) {
         defaultBehaviour();
         exit(0);
     }
 
-    for (unsigned int i = 1; i < args.size(); i++) {
+    for (size_t i = 1; i < args.size(); i++) {
         std::string arg = args[i];
-        if (arg[0] == '-' && arg[1] == '-') {
-            if (longArgs.find(arg.substr(2)) != longArgs.end()) {
-                if (i + 1 < args.size()) {
-                    longArgs[arg.substr(2)].callback(args[i + 1]);
-                    i++;
-                } else {
-                    longArgs[arg.substr(2)].callback("");
-                }
-            } else {
-                defaultBehaviour();
-                exit(0);
-            }
-        } else if (arg[0] == '-') {
-            if (arg.length() == 2 &&
-                aliasArgs.find(arg[1]) != aliasArgs.end()) {
-                if (i + 1 < args.size()) {
-                    aliasArgs[arg[1]].callback(args[i + 1]);
-                    i++;
-                } else {
-                    aliasArgs[arg[1]].callback("");
-                }
-            } else {
-                defaultBehaviour();
-                exit(0);
+
+        if (arg[0] != '-') {
+            continue;
+        }
+
+        Arg* argInfo = nullptr;
+
+        if (arg[1] == '-') {
+            std::string longArg = arg.substr(2);
+            if (longArgs.find(longArg) != longArgs.end()) {
+                argInfo = &longArgs[longArg];
             }
         } else {
-            defaultBehaviour();
+            char shortArg = arg[1];
+            if (arg.length() == 2 && (aliasArgs.find(shortArg) != aliasArgs.end())) {
+                argInfo = &aliasArgs[shortArg];
+            }
+        }
+
+        if (!argInfo) {
+            FMT_PRINT("Unknown argument '{}'!\n", arg);
+            defaultError();
             exit(0);
+        } else if (argInfo->requiresArg && (i + 1 >= args.size() || args[i + 1][0] == '-')) {
+            FMT_PRINT("Error: Argument '{}' requires a value!\n", arg);
+            defaultError();
+            exit(0);
+        } else {
+            toExecute.push_back({
+                argInfo,
+                argInfo->requiresArg ? args[++i] : ""
+            });
         }
     }
+
+    for (auto& arg : toExecute) {
+        arg.first->callback(arg.second);
+    }
+
+
 }

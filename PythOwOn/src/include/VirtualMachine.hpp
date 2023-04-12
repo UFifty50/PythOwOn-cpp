@@ -5,15 +5,12 @@
 #include <vector>
 #include <functional>
 
+#include "Common.hpp"
 #include "Chunk.hpp"
 #include "Value.hpp"
 
 
-enum class InterpretResult {
-    OK,
-    COMPILE_ERROR,
-    RUNTIME_ERROR
-};
+
 
 class VM {
 private:
@@ -36,7 +33,6 @@ public:
         stack.push(op(a, b));
     }
 
-    InterpretResult interpret(Chunk* chunk);
     InterpretResult run();
 };
 

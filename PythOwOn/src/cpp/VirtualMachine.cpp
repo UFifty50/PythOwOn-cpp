@@ -11,13 +11,6 @@ VM::VM() {
 
 VM::~VM() = default;
 
-InterpretResult VM::interpret(Chunk* chunk) {
-    this->chunk = chunk;
-    this->ip = chunk->code.data();
-
-    return InterpretResult::OK;
-}
-
 InterpretResult VM::run() {
     while (true) {
 #if defined(TRACE_EXECUTION)
