@@ -15,7 +15,7 @@
 class VM {
 private:
     Chunk* chunk;
-    size_t* ip;
+    uint8_t* ip;
     Stack<Value> stack;
 
 public:
@@ -23,9 +23,13 @@ public:
     ~VM();   // freeVM()
 
     
-    inline size_t readByte() { return *ip++; }
+    inline uint8_t readByte() { return *ip++; }
     
     inline Value readConstant() { return chunk->constants[readByte()]; }
+    inline Value readConstantLong() { 
+        uint32_t index = (readByte() << 16) | (readByte() << 8) | readByte();
+        return chunk->constants[index];
+    }
     
     template<typename T> inline void binaryOp(T op) {
         Value b = stack.pop();
@@ -36,6 +40,9 @@ public:
     void setChunk(Chunk* chunk);
     Chunk* getChunk();
     InterpretResult run();
+
+    template <typename... T>
+    void runtimeError(std::string message, T... args);
 };
 
 #endif

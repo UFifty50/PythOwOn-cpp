@@ -52,13 +52,14 @@ private:
     void consume(TokenType type, std::string message);
     inline ParseRule* getRule(TokenType type);
 
-    inline void emitByte(size_t byte);
-    inline void emitBytes(size_t byte1, size_t byte2);
+    inline void emitByte(uint8_t byte);
+    inline void emitBytes(uint8_t byte1, uint8_t byte2);
     inline void emitConstant(Value value);
+    inline void emitConstantLong(Value value);
     inline void emitReturn();
     inline void endCompiler();
 
-    size_t makeConstant(Value value);
+//    uint8_t makeConstant(Value value);
     void parsePrecedence(Precedence precedence);
 
 
@@ -70,10 +71,10 @@ private:
     inline void grouping();
 
 public:
-    Compiler();
+    Compiler(Chunk* chunkToCompile);
     ~Compiler();
 
-    bool compile(std::string source, Chunk* chunk);
+    bool compile(std::string source);
 };
 
 #endif

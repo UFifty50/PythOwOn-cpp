@@ -19,7 +19,7 @@ ArgumentParser::~ArgumentParser() {
 
 template<typename T>
 inline bool ArgumentParser::isArg(T arg, std::map<T, Arg> argMap) {
-    return (argMap.find(arg) != argMap.end())
+    return (argMap.find(arg) != argMap.end());
 }
 
 

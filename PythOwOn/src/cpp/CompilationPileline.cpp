@@ -1,24 +1,26 @@
 #include "CompilationPileline.hpp"
 #include "VirtualMachine.hpp"
 #include "Common.hpp"
+#include "Compiler.hpp"
 #include "Chunk.hpp"
 
 
 CompilationPileline::CompilationPileline() {
-    compiler = new Compiler();
+    compiler = nullptr;
     vm = new VM();
 }
 
 CompilationPileline::~CompilationPileline() {
-    delete compiler;
     delete vm;
 }
 
 InterpretResult CompilationPileline::interpret(std::string source) {
     Chunk* chunk = new Chunk();
+    compiler = new Compiler(chunk);
 
-    if (!compile(source, chunk)) {
+    if (!compiler->compile(source)) {
         delete chunk;
+        delete compiler;
         return InterpretResult::COMPILE_ERROR;
     }
 
@@ -27,9 +29,6 @@ InterpretResult CompilationPileline::interpret(std::string source) {
     InterpretResult result = vm->run();
 
     delete chunk;
+    delete compiler;
     return result;
-}
-
-bool CompilationPileline::compile(std::string source, Chunk* chunk) {
-    return compiler->compile(source, chunk);
 }

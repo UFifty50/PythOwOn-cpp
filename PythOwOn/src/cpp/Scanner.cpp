@@ -165,7 +165,7 @@ Token Scanner::identifier() {
     return makeToken(identifierType());
 }
 
-std::optional<Token> Scanner::skipWhitespace() {   // TODO: error if EOF reached before comment close
+std::optional<Token> Scanner::skipWhitespace() {
     while(true) {
         char c = source[current];
         switch (c) {
@@ -189,7 +189,7 @@ std::optional<Token> Scanner::skipWhitespace() {   // TODO: error if EOF reached
                 break;
             }
 
-            default:  break;
+            default: break;
         }
 
         return std::nullopt;
@@ -242,7 +242,6 @@ Token Scanner::scanToken() {
 
         case '"':
             return (source[current] == '"' && peekNext() == '"') ? multiString() : string();
-
     }
 
     return errorToken("Unexpected character.");

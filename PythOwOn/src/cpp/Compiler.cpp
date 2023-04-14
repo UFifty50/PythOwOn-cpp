@@ -8,7 +8,8 @@
 #include "Common.hpp"
 
 
-Compiler::Compiler() : scanner(nullptr), chunk(nullptr) {
+Compiler::Compiler(Chunk* chunkToCompile) : scanner(nullptr) {
+    chunk = chunkToCompile;
     parser.hadError = false;
     parser.panicMode = false;
 
@@ -73,7 +74,6 @@ Compiler::Compiler() : scanner(nullptr), chunk(nullptr) {
 
 Compiler::~Compiler() {
     delete scanner;
-    delete chunk;
 }
 
 void Compiler::advance() {
@@ -118,17 +118,18 @@ inline ParseRule* Compiler::getRule(TokenType type) {
 
 
 
-inline void Compiler::emitByte(size_t byte) {
+inline void Compiler::emitByte(uint8_t byte) {
     chunk->write(byte, parser.previous.line);
 }
 
-inline void Compiler::emitBytes(size_t byte1, size_t byte2) {
+inline void Compiler::emitBytes(uint8_t byte1, uint8_t byte2) {
     emitByte(byte1);
     emitByte(byte2);
 }
 
 inline void Compiler::emitConstant(Value value) {
-    emitBytes(OpCode::CONSTANT, makeConstant(value));
+    
+    chunk->writeConstant(value, parser.previous.line);
 }
 
 inline void Compiler::emitReturn() {
@@ -146,15 +147,16 @@ inline void Compiler::endCompiler() {
 }
 
 
-
-size_t Compiler::makeConstant(Value value) {
+// makeConstant (now not needed thanks to Chunk::writeConstant)
+/*
+uint8_t Compiler::makeConstant(Value value) {
     size_t constant = chunk->addConstant(value);
-    if (constant > SIZE_MAX) {
+    if (constant > UINT8_MAX) {
         errorAt(parser.previous, "Too many constants in one chunk.");
         return 0;
     }
-    return constant;
-}
+    return (uint8_t)constant;
+} */
 
 void Compiler::parsePrecedence(Precedence precedence) {
     advance();
@@ -192,7 +194,7 @@ void Compiler::unary() {
 
 inline void Compiler::number() {
     double value = std::stod(parser.previous.lexeme);
-    emitConstant(value);
+    emitConstant(Value::numberVal(value));
 }
 
 inline void Compiler::grouping() {
@@ -215,9 +217,8 @@ void Compiler::binary() {
 
 
 
-bool Compiler::compile(std::string source, Chunk* chunk) {
+bool Compiler::compile(std::string source) {
     scanner = new Scanner(source);
-    this->chunk = chunk;
 
     advance();
     expression();

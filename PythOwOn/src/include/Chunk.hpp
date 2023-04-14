@@ -44,18 +44,16 @@ enum OpCode {
 };
 
 class Chunk {
-private:
-    std::vector<size_t> lines;
-
 public:
     Chunk();
     ~Chunk();
 
-    void write(size_t byte, size_t line);
+    void write(uint8_t byte, size_t line);
     size_t addConstant(Value value);
     void writeConstant(Value value, size_t line);
 
-    std::vector<size_t> code;
+    std::vector<size_t> lines;
+    std::vector<uint8_t> code;
     ValueArray constants;
 
 #if defined(TRACE_EXECUTION)

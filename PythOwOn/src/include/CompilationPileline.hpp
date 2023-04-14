@@ -11,15 +11,14 @@
 
 class CompilationPileline {
 private:
-    VM* vm;
     Compiler* compiler;
+    VM* vm;
 
 public:
     CompilationPileline();
     ~CompilationPileline();
 
     InterpretResult interpret(std::string source);
-    bool compile(std::string source, Chunk* chunk);
 };
 
 #endif

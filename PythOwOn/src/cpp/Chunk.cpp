@@ -5,14 +5,18 @@
 
 
 Chunk::Chunk() {
-    code = std::vector<size_t>();
+    code = std::vector<uint8_t>();
     lines = std::vector<size_t>();
     constants = ValueArray();
 }
 
-Chunk::~Chunk() = default;
+Chunk::~Chunk() {
+    code.clear();
+    lines.clear();
+    constants.clear();
+}
 
-void Chunk::write(size_t byte, size_t line) {
+void Chunk::write(uint8_t byte, size_t line) {
     code.emplace_back(byte);
     lines.emplace_back(line);
 }
@@ -25,7 +29,7 @@ size_t Chunk::addConstant(Value value) {
 void Chunk::writeConstant(Value value, size_t line) {
     size_t index = addConstant(value);
 
-    if (index < 256) {
+    if (index < UINT8_MAX) {
         write(OpCode::CONSTANT, line);
         write((uint8_t)index, line);
     } else {
@@ -47,29 +51,29 @@ static size_t simpleInstruction(std::string name, size_t offset) {
 }
 
 static size_t constantInstruction(std::string name, const Chunk* chunk, size_t offset) {
-    size_t constant = chunk->code[offset + 1];
-    FMT_PRINT("{:10} {:04}  ", name, constant, chunk->constants[constant]);
+    uint8_t constant = chunk->code[offset + 1];
+    FMT_PRINT("{:10} {:04}  ", name, constant);
     printValue(chunk->constants[constant]);
     FMT_PRINT("\n");
-    return offset + 2;
+    return (size_t)offset + 2;
 }
 
 
-/*static int constantLongInstruction(std::string name, const Chunk* chunk, int offset) {
+static size_t constantLongInstruction(std::string name, const Chunk* chunk, size_t offset) {
         uint32_t constant = (chunk->code[offset + 1])
                             | (chunk->code[offset + 2] << 8)
                             | (chunk->code[offset + 3] << 16);
         FMT_PRINT("{:10} {:04}  ", name, constant);
         printValue(chunk->constants[constant]);
         FMT_PRINT("\n");
-        return offset + 4;
-} */
+        return (size_t)offset + 4;
+}
 
 static size_t byteInstruction(std::string name, const Chunk* chunk, size_t offset) {
     return 1;
 }
 
-static size_t jumpInstruction(std::string name, const Chunk* chunk, size_t j, size_t offset) {
+static size_t jumpInstruction(std::string name, const Chunk* chunk, uint8_t j, size_t offset) {
     return 1;
 }
 
@@ -101,8 +105,8 @@ size_t Chunk::disassembleInstruction(size_t offset) {
         case OpCode::CONSTANT:
             return constantInstruction("CONSTANT", this, offset);
 
-    //    case OpCode::CONSTANT_LONG:
-     //       return constantLongInstruction("CONSTANT_LONG", this, offset);
+        case OpCode::CONSTANT_LONG:
+            return constantLongInstruction("CONSTANT_LONG", this, offset);
 
         case OpCode::NONE:
             return simpleInstruction("NONE", offset);

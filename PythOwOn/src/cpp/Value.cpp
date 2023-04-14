@@ -3,5 +3,5 @@
 
 
 void printValue(Value value) {
-    FMT_PRINT("'{}'", value);
+    FMT_PRINT("'{}'", value.asNumber());
 }
