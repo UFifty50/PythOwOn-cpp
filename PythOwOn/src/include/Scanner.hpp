@@ -16,8 +16,8 @@ private:
 
 
     char advance();
+    bool match(char expected);
     bool isNext(char expected);
-    bool isNextNext(char expected);
     char peekNext();
     char peekNextNext();
     TokenType checkKeyword(int begin, int length, std::string rest, TokenType type);

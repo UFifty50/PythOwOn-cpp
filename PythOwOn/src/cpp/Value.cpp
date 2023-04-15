@@ -3,5 +3,9 @@
 
 
 void printValue(Value value) {
-    FMT_PRINT("'{}'", value.asNumber());
+    switch (value.type) {
+        case ValueType::NONE: FMT_PRINT("None"); break;
+        case ValueType::BOOL: FMT_PRINT("{}", value.as.boolean); break;
+        case ValueType::DOUBLE: FMT_PRINT("{}", value.as.number); break;
+    }
 }

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <cmath>
 
 #include "Common.hpp"
 
@@ -10,7 +11,7 @@
 enum class ValueType {
     NONE,
     BOOL,
-    DOUBLE,
+    DOUBLE
 };
 
 struct Value {
@@ -19,18 +20,6 @@ struct Value {
         bool boolean;
         double number;
     } as;
-
-    Value operator/(Value other) const {
-        return Value::numberVal(as.number / other.as.number);
-    }
-
-    Value operator*(Value other) const {
-        return Value::numberVal(as.number * other.as.number);
-    }
-
-    Value operator+(Value other) const {
-        return Value::numberVal(as.number + other.as.number);
-    }
 
     inline static Value boolVal(bool value) {
         Value v {
@@ -59,7 +48,15 @@ struct Value {
         return v;
     }
 
+    inline static Value asBool(Value value) {
+        return value.isFalsey() ? Value::boolVal(false) : Value::boolVal(true);
+    }
 
+    inline static Value asNumber(Value value) {
+        if (value.isNumber()) return value;
+        if (value.isBool()) return Value::numberVal(value.as.boolean ? 1 : 0);
+        return Value::noneVal();
+    }
 
     inline bool isBool() {
         return type == ValueType::BOOL;
@@ -73,21 +70,83 @@ struct Value {
         return type == ValueType::DOUBLE;
     }
 
-
-    inline bool asBool() {
-        return as.boolean;
+    inline bool isFalsey() {
+        return isNone() || (isBool() && !as.boolean);
     }
 
-    inline double asNumber() {
-        return as.number;
+    inline bool isEqualTo(Value other) {
+        if (type != other.type) return false;
+        switch (type) {
+            case ValueType::BOOL: return as.boolean == other.as.boolean;
+            case ValueType::DOUBLE: return as.number == other.as.number;
+            case ValueType::NONE: return true;
+            default: return false;
+        }
     }
 
-    inline std::string toString() {
+    std::string toString() {
         switch (type) {
             case ValueType::BOOL: return as.boolean ? "true" : "false";
             case ValueType::DOUBLE: return std::to_string(as.number);
             case ValueType::NONE: return "none";
         }
+    }
+
+
+    inline Value operator/(Value other) const {
+        return Value::numberVal(as.number / other.as.number);
+    }
+
+    inline Value operator*(Value other) const {
+        return Value::numberVal(as.number * other.as.number);
+    }
+
+    inline Value operator+(Value other) const {
+        return Value::numberVal(as.number + other.as.number);
+    }
+
+    Value operator%(Value other) const {
+        return Value::numberVal(fmod(as.number, other.as.number));
+    }
+
+    inline Value operator==(Value other) const {
+        switch (type) {
+            case ValueType::DOUBLE: return Value::boolVal(as.number == other.as.number);
+            case ValueType::BOOL: return Value::boolVal(as.boolean == other.as.boolean);
+            case ValueType::NONE: return Value::boolVal(other.type == ValueType::NONE ? true : false);
+        }
+    }
+
+    inline Value operator!=(Value other) const {
+        switch (type) {
+            case ValueType::DOUBLE: return Value::boolVal(as.number != other.as.number);
+            case ValueType::BOOL: return Value::boolVal(as.boolean != other.as.boolean);
+            case ValueType::NONE: return Value::boolVal(other.type != ValueType::NONE ? true : false);
+        }
+    }
+
+    inline bool operator>(Value other) const {
+        return as.number > other.as.number;
+    }
+           
+    inline bool operator<(Value other) const {
+        return as.number < other.as.number;
+    }
+           
+    inline bool operator>=(Value other) const {
+        return as.number >= other.as.number;
+    }
+           
+    inline bool operator<=(Value other) const {
+        return as.number <= other.as.number;
+    }
+
+    inline Value operator<<(Value other) const {
+        return Value::numberVal((size_t)as.number << (size_t)other.as.number);
+    }
+
+    inline Value operator>>(Value other) const {
+        return Value::numberVal((size_t)as.number >> (size_t)other.as.number);
     }
 };
 
@@ -111,6 +170,7 @@ public:
 
     inline void reset() { this->clear(); }
 
+    inline size_t size() { return this->std::vector<T>::size(); }
     std::vector<T>::iterator begin() { return this->std::vector<T>::begin(); }
     std::vector<T>::iterator end() { return this->std::vector<T>::end(); }
 };

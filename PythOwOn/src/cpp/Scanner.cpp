@@ -24,17 +24,10 @@ char Scanner::advance() {
     return source[current - 1];
 }
 
-bool Scanner::isNext(char expected) {
+bool Scanner::match(char expected) {
     if (AT_END) return false;
-    if (peekNext() != expected) return false;
+    if (source[current] != expected) return false;
     current++;
-    return true;
-}
-
-bool Scanner::isNextNext(char expected) {
-    if (current+2 >= source.length()) return false;
-    if (peekNextNext() != expected) return false;
-    current += 2;
     return true;
 }
 
@@ -95,7 +88,22 @@ TokenType Scanner::identifierType() {
             break;
 
         case 'i': return checkKeyword(1, 1, "f", TokenType::IF);
-        case 'n': return checkKeyword(1, 3, "one", TokenType::NONE);
+
+        case 'n': // can be none or not
+            if ((current - start) > 2) {
+                switch (source[start + 1]) {
+                    case 'o': 
+                        switch (source[start + 2]) {
+                            case 'n': return checkKeyword(3, 1, "e", TokenType::NONE);
+                            case 't': return checkKeyword(3, 0, "", TokenType::NOT);
+                            default: break;
+                        }
+                    default: break;
+                }
+            }
+            break;
+
+
         case 'o': return checkKeyword(1, 1, "r", TokenType::OR);
         case 'p': return checkKeyword(1, 4, "rint", TokenType::PRINT);
         case 'r': return checkKeyword(1, 5, "eturn", TokenType::RETURN);
@@ -222,22 +230,25 @@ Token Scanner::scanToken() {
 
         case '!':
             return makeToken(
-                isNext('=') ? TokenType::BANG_EQ : TokenType::BANG
+                match('=') ? TokenType::BANG_EQ : TokenType::BANG
             );
 
         case '=':
             return makeToken(
-                isNext('=') ? TokenType::EQ_EQ : TokenType::EQ
-            );
-
-        case '<':
-            return makeToken(
-                isNext('=') ? TokenType::LESS_EQ : TokenType::LESS
+                match('=') ? TokenType::EQ_EQ : TokenType::EQ
             );
 
         case '>':
             return makeToken(
-                isNext('=') ? TokenType::GREATER_EQ : TokenType::GREATER
+                match('=') ? TokenType::GREATER_EQ : (
+                    match('>') ? TokenType::RSHIFT : TokenType::GREATER
+                    )
+            );
+        case '<':
+            return makeToken(
+                match('=') ? TokenType::LESS_EQ : (
+                    match('<') ? TokenType::LSHIFT : TokenType::LESS
+                    )
             );
 
         case '"':

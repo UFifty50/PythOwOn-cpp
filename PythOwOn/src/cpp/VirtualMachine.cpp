@@ -1,4 +1,6 @@
 #include <string>
+#include <functional>
+#include <algorithm>
 
 #include "VirtualMachine.hpp"
 #include "Value.hpp"
@@ -20,9 +22,9 @@ Chunk* VM::getChunk() {
     return chunk;
 }
 
-template<typename... T>
-void VM::runtimeError(std::string message, T... args) {
-//    FMT_PRINT(message+"\n", std::forward<T...>(args...));
+template<AllPrintable... Ts>
+void VM::runtimeError(std::string message, Ts... args) {
+    FMT_PRINT(message+"\n", args...);
 
     int instruction = ip - chunk->code.data();
     size_t line = chunk->lines[instruction];
@@ -51,37 +53,66 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::CONSTANT_LONG: {
+            case OpCode::FALSE: stack.push(Value::boolVal(false)); break;
+
+            case OpCode::TRUE: stack.push(Value::boolVal(true)); break;
+
+            case OpCode::NONE: stack.push(Value::noneVal()); break;
+
+            case OpCode::CONSTANT_LONG:
                 Value constant = readConstantLong();
                 stack.push(constant);
                 break;
-            }
+
+            case OpCode::EQUAL:
+                Value b = stack.pop();
+                Value a = stack.pop();
+                stack.push(Value::boolVal(a.isEqualTo(b)));
+                break;
+
+            case OpCode::GREATER:
+                if (auto a = binaryOp<std::greater<Value>, bool>(std::greater<Value>(), Value::numberVal)) return a.value();
+                break;
+
+            case OpCode::LESS:
+                if (auto a = binaryOp<std::less<Value>, bool>(std::less<Value>(), Value::numberVal)) return a.value();
+                break;
             
-            case OpCode::ADD: {
-                binaryOp(std::plus<Value>());
+            case OpCode::ADD: 
+                if (auto a = binaryOp<std::plus<Value>, Value>(std::plus<Value>(), Value::asNumber)) return a.value();
                 break;
-            }
 
-            case OpCode::MULTIPLY: {
-                binaryOp(std::multiplies<Value>());
+            case OpCode::MULTIPLY:
+                if (auto a = binaryOp<std::multiplies<Value>, Value>(std::multiplies<Value>(), Value::asNumber)) return a.value();
                 break;
-            }
              
-            case OpCode::DIVIDE: {
-                binaryOp(std::divides<Value>());
+            case OpCode::DIVIDE:
+                if (auto a = binaryOp<std::divides<Value>, Value>(std::divides<Value>(), Value::asNumber)) return a.value();
                 break;
-            }
 
-            case OpCode::NEGATE:
+            case OpCode::NOT:
+                stack.push(Value::boolVal(stack.pop().isFalsey()));
+                break;
+
+            case OpCode::NEGATE: {
                 if (!stack.peek(0).isNumber()) {
                     runtimeError("Operand must be a number.");
                     return InterpretResult::RUNTIME_ERROR;
                 }
-                stack.push(Value::numberVal(-stack.pop().asNumber()));
+                stack.push(Value::numberVal(-stack.pop().as.number));
+                break;
+            }
+
+            case OpCode::LEFTSHIFT:
+                if (auto a = binaryOp<left_shifts<Value>, Value>(left_shifts<Value>(), Value::asNumber)) return a.value();
+                break;
+
+            case OpCode::RIGHTSHIFT:
+                if (auto a = binaryOp<right_shifts<Value>, Value>(right_shifts<Value>(), Value::asNumber)) return a.value();
                 break;
 
             case OpCode::RETURN: {
-                printValue(stack.pop());
+                if (stack.size() > 0) printValue(stack.pop());
                 FMT_PRINT("\n");
                 return InterpretResult::OK;
             }

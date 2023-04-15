@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include <functional>
+#include <optional>
 
 #include "Common.hpp"
 #include "Chunk.hpp"
@@ -30,19 +30,28 @@ public:
         uint32_t index = (readByte() << 16) | (readByte() << 8) | readByte();
         return chunk->constants[index];
     }
-    
-    template<typename T> inline void binaryOp(T op) {
+
+    // template<typename T> inline InterpretResult binaryOp(std::function<Value(double)> as, T op)
+    template<typename F, typename T>
+    std::optional<InterpretResult> binaryOp(F op, std::function<Value(T)> type) {
+        if (!stack.peek(0).isNumber() || !stack.peek(1).isNumber()) {
+            runtimeError("Operands must be numbers.");
+            return InterpretResult::RUNTIME_ERROR;
+        }
+
         Value b = stack.pop();
         Value a = stack.pop();
-        stack.push(op(a, b));
+        stack.push(type(op(a, b)));
+        
+        return std::nullopt;
     }
 
     void setChunk(Chunk* chunk);
     Chunk* getChunk();
     InterpretResult run();
 
-    template <typename... T>
-    void runtimeError(std::string message, T... args);
+    template <AllPrintable... Ts>
+    void runtimeError(std::string message, Ts... args);
 };
 
 #endif

@@ -45,7 +45,7 @@ private:
     Chunk* chunk;
     Scanner* scanner;
     Parser parser;
-    ParseRule rules[58];
+    ParseRule rules[(int)TokenType::TOKEN_COUNT];
 
     void advance();
     void errorAt(Token token, std::string message);
@@ -55,7 +55,6 @@ private:
     inline void emitByte(uint8_t byte);
     inline void emitBytes(uint8_t byte1, uint8_t byte2);
     inline void emitConstant(Value value);
-    inline void emitConstantLong(Value value);
     inline void emitReturn();
     inline void endCompiler();
 
@@ -67,6 +66,7 @@ private:
   //  void statement();
     void unary();
     void binary();
+    void literal();
     inline void number();
     inline void grouping();
 

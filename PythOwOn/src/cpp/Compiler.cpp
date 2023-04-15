@@ -13,63 +13,65 @@ Compiler::Compiler(Chunk* chunkToCompile) : scanner(nullptr) {
     parser.hadError = false;
     parser.panicMode = false;
 
-    rules[(int)TokenType::LPAREN]     =  ParseRule { &Compiler::grouping,   nullptr,             Precedence::CALL };
-    rules[(int)TokenType::RPAREN]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::LBRACE]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::RBRACE]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::LBRACK]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::RBRACK]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::COMMA]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::DOT]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::MINUS]      =  ParseRule { &Compiler::unary,      &Compiler::binary,   Precedence::TERM };
-    rules[(int)TokenType::PLUS]       =  ParseRule { nullptr,               &Compiler::binary,   Precedence::TERM };
-    rules[(int)TokenType::SEMI]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::SLASH]      =  ParseRule { nullptr,               &Compiler::binary,   Precedence::FACTOR };
-    rules[(int)TokenType::STAR]       =  ParseRule { nullptr,               &Compiler::binary,   Precedence::FACTOR };
-    rules[(int)TokenType::PERCENT]    =  ParseRule { nullptr,               &Compiler::binary,   Precedence::FACTOR };
-    rules[(int)TokenType::BANG]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::BANG_EQ]    =  ParseRule { nullptr,               nullptr,             Precedence::EQUALITY };
-    rules[(int)TokenType::EQ]         =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::EQ_EQ]      =  ParseRule { nullptr,               nullptr,             Precedence::COMPARISON };
-    rules[(int)TokenType::GREATER]    =  ParseRule { nullptr,               nullptr,             Precedence::COMPARISON };
-    rules[(int)TokenType::GREATER_EQ] =  ParseRule { nullptr,               nullptr,             Precedence::COMPARISON };
-    rules[(int)TokenType::LESS]       =  ParseRule { nullptr,               nullptr,             Precedence::COMPARISON };
-    rules[(int)TokenType::LESS_EQ]    =  ParseRule { nullptr,               nullptr,             Precedence::COMPARISON };
-    rules[(int)TokenType::LSHIFT]     =  ParseRule { nullptr,               nullptr,             Precedence::SHIFT };
-    rules[(int)TokenType::RSHIFT]     =  ParseRule { nullptr,               nullptr,             Precedence::SHIFT };
-    rules[(int)TokenType::AMPERSAND]  =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::PIPE]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::CARET]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::IDENTIFIER] =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::STR]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::NUM]        =  ParseRule { &Compiler::number,     nullptr,             Precedence::NONE };
-    rules[(int)TokenType::INFINITY]   =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::NAN]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::AND]        =  ParseRule { nullptr,               nullptr,             Precedence::AND };
-    rules[(int)TokenType::CLASS]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::ELSE]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::FALSE]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::FOR]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::DEF]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::IF]         =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::NONE]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::OR]         =  ParseRule { nullptr,               nullptr,             Precedence::OR };
-    rules[(int)TokenType::PRINT]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::RETURN]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType:: SUPER]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::THIS]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::TRUE]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::VAR]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::WHILE]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::EXTENDS]    =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::SWITCH]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::CASE]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::DEFAULT]    =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::CONTINUE]   =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::BREAK]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::IN]         =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::ERROR]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
-    rules[(int)TokenType::EOF]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE };
+    rules[(int)TokenType::LPAREN]     =  ParseRule { &Compiler::grouping,   nullptr,             Precedence::CALL       };
+    rules[(int)TokenType::RPAREN]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::LBRACE]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::RBRACE]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::LBRACK]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::RBRACK]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::COMMA]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::DOT]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::MINUS]      =  ParseRule { &Compiler::unary,      &Compiler::binary,   Precedence::TERM       };
+    rules[(int)TokenType::PLUS]       =  ParseRule { nullptr,               &Compiler::binary,   Precedence::TERM       };
+    rules[(int)TokenType::PERCENT]    =  ParseRule { nullptr,               &Compiler::binary,   Precedence::FACTOR     };
+    rules[(int)TokenType::SEMI]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::SLASH]      =  ParseRule { nullptr,               &Compiler::binary,   Precedence::FACTOR     };
+    rules[(int)TokenType::STAR]       =  ParseRule { nullptr,               &Compiler::binary,   Precedence::FACTOR     };
+    rules[(int)TokenType::COLON]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::BANG]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::BANG_EQ]    =  ParseRule { nullptr,               &Compiler::binary,   Precedence::EQUALITY   };
+    rules[(int)TokenType::EQ]         =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::EQ_EQ]      =  ParseRule { nullptr,               &Compiler::binary,   Precedence::EQUALITY   };
+    rules[(int)TokenType::GREATER]    =  ParseRule { nullptr,               &Compiler::binary,   Precedence::COMPARISON };
+    rules[(int)TokenType::GREATER_EQ] =  ParseRule { nullptr,               &Compiler::binary,   Precedence::COMPARISON };
+    rules[(int)TokenType::LESS]       =  ParseRule { nullptr,               &Compiler::binary,   Precedence::COMPARISON };
+    rules[(int)TokenType::LESS_EQ]    =  ParseRule { nullptr,               &Compiler::binary,   Precedence::COMPARISON };
+    rules[(int)TokenType::LSHIFT]     =  ParseRule { nullptr,               &Compiler::binary,   Precedence::SHIFT      };
+    rules[(int)TokenType::RSHIFT]     =  ParseRule { nullptr,               &Compiler::binary,   Precedence::SHIFT      };
+    rules[(int)TokenType::AMPERSAND]  =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::PIPE]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::CARET]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::IDENTIFIER] =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::STR]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::NUM]        =  ParseRule { &Compiler::number,     nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::INFINITY]   =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::NAN]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::AND]        =  ParseRule { nullptr,               nullptr,             Precedence::AND        };
+    rules[(int)TokenType::OR]         =  ParseRule { nullptr,               nullptr,             Precedence::OR         };
+    rules[(int)TokenType::NOT]        =  ParseRule { &Compiler::unary,      nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::CLASS]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::ELSE]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::FALSE]      =  ParseRule { &Compiler::literal,    nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::FOR]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::DEF]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::IF]         =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::NONE]       =  ParseRule { &Compiler::literal,    nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::PRINT]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::RETURN]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::SUPER]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::THIS]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::TRUE]       =  ParseRule { &Compiler::literal,    nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::VAR]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::WHILE]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::EXTENDS]    =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::SWITCH]     =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::CASE]       =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::DEFAULT]    =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::CONTINUE]   =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::BREAK]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::IN]         =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::ERROR]      =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::EOF]        =  ParseRule { nullptr,               nullptr,             Precedence::NONE       };
 }
 
 Compiler::~Compiler() {
@@ -187,6 +189,7 @@ void Compiler::unary() {
     parsePrecedence(Precedence::UNARY);
 
     switch (operatorType) {
+        case TokenType::NOT: emitByte(OpCode::NOT); break;
         case TokenType::MINUS: emitByte(OpCode::NEGATE); break;
         default: return; // Unreachable.
     }
@@ -208,14 +211,30 @@ void Compiler::binary() {
     parsePrecedence((Precedence)((int)rule->precedence + 1));
 
     switch (operatorType) {
+        case TokenType::MINUS:        emitBytes(OpCode::NEGATE, OpCode::ADD); break;
         case TokenType::PLUS:          emitByte(OpCode::ADD); break;
-        case TokenType::STAR:          emitByte(OpCode::MULTIPLY); break;
         case TokenType::SLASH:         emitByte(OpCode::DIVIDE); break;
-        default: break; // Unreachable
+        case TokenType::STAR:          emitByte(OpCode::MULTIPLY); break;
+        case TokenType::BANG_EQ:      emitBytes(OpCode::EQUAL, OpCode::NOT); break;
+        case TokenType::EQ_EQ:         emitByte(OpCode::EQUAL); break;
+        case TokenType::GREATER:       emitByte(OpCode::GREATER); break;
+        case TokenType::GREATER_EQ:   emitBytes(OpCode::LESS, OpCode::NOT); break;
+        case TokenType::LESS:          emitByte(OpCode::LESS); break;
+        case TokenType::LESS_EQ:      emitBytes(OpCode::GREATER, OpCode::NOT); break;
+        case TokenType::LSHIFT:        emitByte(OpCode::LEFTSHIFT); break;
+        case TokenType::RSHIFT:        emitByte(OpCode::RIGHTSHIFT); break;
+        default: return; // Unreachable
     }
 }
 
-
+void Compiler::literal() {
+    switch (parser.previous.type) {
+        case TokenType::FALSE: emitByte(OpCode::FALSE); break;
+        case TokenType::TRUE:  emitByte(OpCode::TRUE); break;
+        case TokenType::NONE:  emitByte(OpCode::NONE); break;
+        default: return; // Unreachable
+    }
+}
 
 bool Compiler::compile(std::string source) {
     scanner = new Scanner(source);
