@@ -21,7 +21,8 @@ public:
         std::shared_ptr<Chunk> chunk;
         uint8_t* ip;
         Stack<Value> stack;
-        std::unordered_map<Obj*, Value> strings;
+        std::unordered_map<ObjString, Value> strings;
+        std::unordered_map<ObjString, Value> globals;
         LinkedList::Single<Obj*> objects;
     };
 
@@ -37,7 +38,8 @@ public:
 
     static Value readConstant() { return VMstate.chunk->constants[readByte()]; }
     static Value readConstantLong() {
-        uint32_t index = (readByte() << 16) | (readByte() << 8) | readByte();
+        uint32_t index =
+            (readByte() << 24) | (readByte() << 16) | (readByte() << 8) | readByte();
         return VMstate.chunk->constants[index];
     }
 
@@ -52,7 +54,11 @@ public:
     }
 
     static void addString(ObjString* string, const Value& value) {
-        VMstate.strings.emplace((Obj*)string, value);
+        VMstate.strings[*string] = value;
+    }
+
+    static void defineGlobal(ObjString* name, const Value& value) {
+        VMstate.globals[*name] = value;
     }
 
     static void setChunk(std::shared_ptr<Chunk> chunk);

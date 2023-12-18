@@ -25,6 +25,8 @@ struct ObjString {
 
     static ObjString* create(const std::string& str);
     static ObjString* create(const std::string& str, std::tuple<int, int> slice);
+
+    bool operator==(const ObjString& other) const;
 };
 
 template <>

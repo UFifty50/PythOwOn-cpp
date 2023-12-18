@@ -8,6 +8,12 @@
 
 
 class Scanner {
+public:
+    Scanner(std::string source);
+    ~Scanner();
+
+    Token scanToken();
+
 private:
     std::string source;
     size_t start;
@@ -32,12 +38,6 @@ private:
     Token multiString();
     Token number();
     Token identifier();
-
-public:
-    Scanner(std::string source);
-    ~Scanner();
-
-    Token scanToken();
 };
 
 #endif

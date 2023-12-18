@@ -159,7 +159,7 @@ TokenType Scanner::identifierType() {
             break;
 
         case 'v':
-            return checkKeyword(1, 2, "ar", TokenType::VAR);
+            return checkKeyword(1, 2, "ar", TokenType::LET);
         case 'w':
             return checkKeyword(1, 4, "hile", TokenType::WHILE);
 
@@ -331,6 +331,8 @@ Token Scanner::scanToken() {
             return makeToken(TokenType::MINUS);
         case '+':
             return makeToken(TokenType::PLUS);
+        case ';':
+            return makeToken(TokenType::SEMI);
         case '/':
             return makeToken(TokenType::SLASH);
         case '*':

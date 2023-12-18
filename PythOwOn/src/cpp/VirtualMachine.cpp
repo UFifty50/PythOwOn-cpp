@@ -14,7 +14,8 @@ VM::State VM::VMstate;
 
 void VM::initVM() {
     VMstate.stack = Stack<Value>();
-    VMstate.strings = std::unordered_map<Obj*, Value>();
+    VMstate.strings = std::unordered_map<ObjString, Value>();
+    VMstate.globals = std::unordered_map<ObjString, Value>();
     VMstate.objects = LinkedList::Single<Obj*>();
     VMstate.ip = nullptr;
 }
@@ -23,6 +24,8 @@ void VM::shutdownVM() {
     VMstate.chunk.reset();
     VMstate.stack.reset();
     VMstate.objects.clear();
+    VMstate.strings.clear();
+    VMstate.globals.clear();
     VMstate.ip = nullptr;
 }
 
@@ -73,6 +76,66 @@ InterpretResult VM::run() {
             case OpCode::TRUE:
                 VMstate.stack.push(Value::boolVal(true));
                 break;
+
+            case OpCode::POP:
+                VMstate.stack.pop();
+                break;
+
+            case OpCode::GET_GLOBAL: {
+                ObjString* name = Value::asObject(readConstant())->asString();
+                if (!VMstate.globals.contains(*name)) {
+                    runtimeError("Undefined variable '{}'.", name->str);
+                    return InterpretResult::RUNTIME_ERROR;
+                }
+
+                VMstate.stack.push(VMstate.globals[*name]);
+                break;
+            }
+
+            case OpCode::GET_GLOBAL_LONG: {
+                ObjString* name = Value::asObject(readConstantLong())->asString();
+                if (!VMstate.globals.contains(*name)) {
+                    runtimeError("Undefined variable '{}'.", name->str);
+                    return InterpretResult::RUNTIME_ERROR;
+                }
+
+                VMstate.stack.push(VMstate.globals[*name]);
+                break;
+            }
+
+            case OpCode::SET_GLOBAL: {
+                ObjString* name = Value::asObject(readConstant())->asString();
+                if (!VMstate.globals.contains(*name)) {
+                    runtimeError("Undefined variable '{}'.", name->str);
+                    return InterpretResult::RUNTIME_ERROR;
+                }
+
+                VMstate.globals[*name] = VMstate.stack.peek(0);
+                break;
+            }
+
+            case OpCode::SET_GLOBAL_LONG: {
+                ObjString* name = Value::asObject(readConstantLong())->asString();
+                if (!VMstate.globals.contains(*name)) {
+                    runtimeError("Undefined variable '{}'.", name->str);
+                    return InterpretResult::RUNTIME_ERROR;
+                }
+
+                VMstate.globals[*name] = VMstate.stack.peek(0);
+                break;
+            }
+
+            case OpCode::DEF_GLOBAL: {
+                ObjString* name = Value::asObject(readConstant())->asString();
+                defineGlobal(name, VMstate.stack.pop());
+                break;
+            }
+
+            case OpCode::DEF_GLOBAL_LONG: {
+                ObjString* name = Value::asObject(readConstantLong())->asString();
+                defineGlobal(name, VMstate.stack.pop());
+                break;
+            }
 
             case OpCode::NONE:
                 VMstate.stack.push(Value::noneVal());
@@ -146,11 +209,20 @@ InterpretResult VM::run() {
                 if (auto a = binaryOp<rshift<Value>>(&VM::digitChecker)) return a.value();
                 break;
 
-            case OpCode::RETURN: {
-                if (VMstate.stack.size() > 0) printValue(VMstate.stack.pop());
+            case OpCode::PRINT: {
+                printValue(VMstate.stack.pop());
                 FMT_PRINT("\n");
+                break;
+            }
+
+            case OpCode::RETURN: {
+                // if (VMstate.stack.size() > 0) printValue(VMstate.stack.pop());
+                // FMT_PRINT("\n");
                 return InterpretResult::OK;
             }
+
+            default:
+                return InterpretResult::RUNTIME_ERROR;
         }
     }
 }

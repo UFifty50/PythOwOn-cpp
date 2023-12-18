@@ -14,6 +14,8 @@ bool Obj::operator==(const Obj& other) const {
     }
 }
 
+bool ObjString::operator==(const ObjString& other) const { return str == other.str; }
+
 
 ObjString* ObjString::create(const std::string& str) {
     ObjString* string = (ObjString*)VM::newObject<ObjString>(ObjType::STRING);

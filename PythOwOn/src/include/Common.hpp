@@ -26,7 +26,7 @@ using ssize_t = intmax_t;
 
 enum class InterpretResult { OK, COMPILE_ERROR, RUNTIME_ERROR };
 
-enum class TokenType {  // TODO: add const token (maybe?)
+enum class TokenType {
     // single char tokens
     LPAREN,
     RPAREN,
@@ -82,7 +82,8 @@ enum class TokenType {  // TODO: add const token (maybe?)
     SUPER,
     THIS,
     TRUE,
-    VAR,
+    LET,
+    CONST,
     WHILE,
     EXTENDS,
     SWITCH,

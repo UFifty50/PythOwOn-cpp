@@ -45,7 +45,7 @@ Compiler::Compiler(std::shared_ptr<Chunk> chunkToCompile) : chunk(chunkToCompile
     rules[(int)TokenType::AMPERSAND]  = { nullptr,              nullptr,             Precedence::NONE       };
     rules[(int)TokenType::PIPE]       = { nullptr,              nullptr,             Precedence::NONE       };
     rules[(int)TokenType::CARET]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[(int)TokenType::IDENTIFIER] = { nullptr,              nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::IDENTIFIER] = { &Compiler::variable,  nullptr,             Precedence::NONE       };
     rules[(int)TokenType::STR]        = { &Compiler::string,    nullptr,             Precedence::NONE       };
     rules[(int)TokenType::NUM]        = { &Compiler::number,    nullptr,             Precedence::NONE       };
     rules[(int)TokenType::INF]        = { &Compiler::number,    nullptr,             Precedence::NONE       };
@@ -65,7 +65,7 @@ Compiler::Compiler(std::shared_ptr<Chunk> chunkToCompile) : chunk(chunkToCompile
     rules[(int)TokenType::SUPER]      = { nullptr,              nullptr,             Precedence::NONE       };
     rules[(int)TokenType::THIS]       = { nullptr,              nullptr,             Precedence::NONE       };
     rules[(int)TokenType::TRUE]       = { &Compiler::literal,   nullptr,             Precedence::NONE       };
-    rules[(int)TokenType::VAR]        = { nullptr,              nullptr,             Precedence::NONE       };
+    rules[(int)TokenType::LET]        = { nullptr,              nullptr,             Precedence::NONE       };
     rules[(int)TokenType::WHILE]      = { nullptr,              nullptr,             Precedence::NONE       };
     rules[(int)TokenType::EXTENDS]    = { nullptr,              nullptr,             Precedence::NONE       };
     rules[(int)TokenType::SWITCH]     = { nullptr,              nullptr,             Precedence::NONE       };
@@ -107,6 +107,8 @@ void Compiler::errorAt(Token token, std::string message) {
     parser.hadError = true;
 }
 
+inline ParseRule* Compiler::getRule(TokenType type) { return &rules[(int)type]; }
+
 void Compiler::consume(TokenType type, std::string message) {
     if (parser.current.type == type) {
         advance();
@@ -115,8 +117,11 @@ void Compiler::consume(TokenType type, std::string message) {
     errorAt(parser.current, message);
 }
 
-inline ParseRule* Compiler::getRule(TokenType type) { return &rules[(int)type]; }
-
+bool Compiler::match(TokenType type) {
+    if (parser.current.type != type) return false;
+    advance();
+    return true;
+}
 
 inline void Compiler::emitByte(uint8_t byte) { chunk->write(byte, parser.previous.line); }
 
@@ -127,6 +132,10 @@ inline void Compiler::emitBytes(uint8_t byte1, uint8_t byte2) {
 
 inline void Compiler::emitConstant(Value value) {
     chunk->writeConstant(value, parser.previous.line);
+}
+
+void Compiler::emitGlobal(OpCode setOrGet, uint32_t global) {
+    chunk->writeGlobal(setOrGet, global, parser.previous.line);
 }
 
 inline void Compiler::emitReturn() { emitByte(OpCode::RETURN); }
@@ -161,19 +170,115 @@ void Compiler::parsePrecedence(Precedence precedence) {
         return;
     }
 
-    prefixRule(this);
+    bool canAssign = precedence <= Precedence::ASSIGNMENT;
+    prefixRule(this, canAssign);
 
     while (precedence <= getRule(parser.current.type)->precedence) {
         advance();
         auto& infixRule = getRule(parser.previous.type)->infix;
-        infixRule(this);
+        infixRule(this, canAssign);
+    }
+
+    if (canAssign && match(TokenType::EQ)) {
+        errorAt(parser.previous, "Invalid assignment target.");
+    }
+}
+
+uint32_t Compiler::identifierConstant(Token* name) {
+    return chunk->addConstant(
+        Value::objectVal(ObjString::create(name->lexeme)));  //, {1, -1}
+}
+
+uint32_t Compiler::parseVariable(std::string errorMessage) {
+    consume(TokenType::IDENTIFIER, errorMessage);
+    return identifierConstant(&parser.previous);
+}
+
+void Compiler::defineVariable(uint32_t global) { emitGlobal(OpCode::DEF_GLOBAL, global); }
+
+void Compiler::namedVariable(Token name, bool canAssign) {
+    uint32_t arg = identifierConstant(&name);
+
+    if (canAssign && match(TokenType::EQ)) {
+        expression();
+        emitGlobal(OpCode::SET_GLOBAL, arg);
+    } else {
+        emitGlobal(OpCode::GET_GLOBAL, arg);
     }
 }
 
 
 void Compiler::expression() { parsePrecedence(Precedence::ASSIGNMENT); }
 
-void Compiler::unary() {
+void Compiler::expressionStatement() {
+    expression();
+    consume(TokenType::SEMI, "Expected ';' after expression.");
+    emitByte(OpCode::POP);
+}
+
+void Compiler::printStatement() {
+    expression();
+    consume(TokenType::SEMI, "Expected ';' after value.");
+    emitByte(OpCode::PRINT);
+}
+
+void Compiler::statement() {
+    if (match(TokenType::PRINT)) {
+        printStatement();  // TODO: move to naitive function
+    } else {
+        expressionStatement();
+    }
+}
+
+void Compiler::declaration() {
+    if (match(TokenType::LET)) {
+        varDeclaration();
+    } else {
+        statement();
+    }
+
+    if (parser.panicMode) panicSync();
+}
+
+void Compiler::varDeclaration() {
+    uint32_t global = parseVariable("Expected variable name.");
+
+    if (match(TokenType::EQ)) {
+        expression();
+    } else {
+        emitByte(OpCode::NONE);
+    }
+
+    consume(TokenType::SEMI, "Expected ';' after variable declaration.");
+
+    defineVariable(global);
+}
+
+void Compiler::panicSync() {
+    parser.panicMode = false;
+
+    while (parser.current.type != TokenType::EOF) {
+        if (parser.previous.type == TokenType::SEMI) return;
+
+        switch (parser.current.type) {
+            case TokenType::CLASS:
+            case TokenType::DEF:
+            case TokenType::LET:
+            case TokenType::FOR:
+            case TokenType::IF:
+            case TokenType::WHILE:
+            case TokenType::PRINT:
+            case TokenType::RETURN:
+                return;
+
+            default:;  // Do nothing.
+        }
+
+        advance();
+    }
+}
+
+void Compiler::unary(bool) {
     TokenType operatorType = parser.previous.type;
 
     parsePrecedence(Precedence::UNARY);
@@ -187,7 +292,7 @@ void Compiler::unary() {
     // clang-format on
 }
 
-void Compiler::binary() {
+void Compiler::binary(bool) {
     TokenType operatorType = parser.previous.type;
     ParseRule* rule = getRule(operatorType);
     parsePrecedence((Precedence)((int)rule->precedence + 1));
@@ -211,7 +316,7 @@ void Compiler::binary() {
     // clang-format on
 }
 
-void Compiler::literal() {
+void Compiler::literal(bool) {
     // clang-format off
     switch (parser.previous.type) {
         case TokenType::FALSE: emitByte(OpCode::FALSE); break;
@@ -222,12 +327,14 @@ void Compiler::literal() {
     // clang-format on
 }
 
-void Compiler::string() {
+void Compiler::string(bool) {
     ObjString* str = ObjString::create(parser.previous.lexeme, {1, -1});
     emitConstant(Value::objectVal(str));
 }
 
-void Compiler::number() {
+void Compiler::variable(bool canAssign) { namedVariable(parser.previous, canAssign); }
+
+void Compiler::number(bool) {
     if (parser.previous.lexeme == "nan") {
         emitConstant(Value::nan(true));
         return;
@@ -245,7 +352,7 @@ void Compiler::number() {
     }
 }
 
-void Compiler::grouping() {
+void Compiler::grouping(bool) {
     expression();
     consume(TokenType::RPAREN, "Expected ')' after expression.");
 }
@@ -255,8 +362,10 @@ bool Compiler::compile(std::string source) {
     scanner = std::make_unique<Scanner>(source);
 
     advance();
-    expression();
-    consume(TokenType::EOF, "Expected end of expression.");
+
+    while (!match(TokenType::EOF)) {
+        declaration();
+    }
 
     endCompiler();
     return !parser.hadError;

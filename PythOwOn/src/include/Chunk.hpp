@@ -8,14 +8,16 @@
 #include "Value.hpp"
 
 
+enum OpCode;
 class Chunk {
 public:
     Chunk() = default;
     ~Chunk() = default;
 
     void write(uint8_t byte, size_t line);
-    size_t addConstant(Value value);
+    uint32_t addConstant(Value value);
     void writeConstant(Value value, size_t line);
+    void writeGlobal(OpCode setOrGet, uint32_t global, size_t line);
 
     std::vector<size_t> lines;
     std::vector<uint8_t> code;
@@ -35,10 +37,15 @@ enum OpCode {
     FALSE,
     POP,
     GET_LOCAL,
+    GET_LOCAL_LONG,
     SET_LOCAL,
+    SET_LOCAL_LONG,
     GET_GLOBAL,
+    GET_GLOBAL_LONG,
     DEF_GLOBAL,
+    DEF_GLOBAL_LONG,
     SET_GLOBAL,
+    SET_GLOBAL_LONG,
     EQUAL,
     GREATER,
     LESS,
