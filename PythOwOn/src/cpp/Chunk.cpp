@@ -1,20 +1,9 @@
+#include "Chunk.hpp"
+
 #include <string>
 
 #include "Common.hpp"
-#include "Chunk.hpp"
 
-
-Chunk::Chunk() {
-    code = std::vector<uint8_t>();
-    lines = std::vector<size_t>();
-    constants = ValueArray();
-}
-
-Chunk::~Chunk() {
-    code.clear();
-    lines.clear();
-    constants.clear();
-}
 
 void Chunk::write(uint8_t byte, size_t line) {
     code.emplace_back(byte);
@@ -34,9 +23,9 @@ void Chunk::writeConstant(Value value, size_t line) {
         write((uint8_t)index, line);
     } else {
         write(OpCode::CONSTANT_LONG, line);
-        write((uint8_t)(index & 0xff), line);
-        write((uint8_t)((index >> 8) & 0xff), line);
         write((uint8_t)((index >> 16) & 0xff), line);
+        write((uint8_t)((index >> 8) & 0xff), line);
+        write((uint8_t)(index & 0xff), line);
     }
 }
 
@@ -53,27 +42,28 @@ static size_t simpleInstruction(std::string name, size_t offset) {
 static size_t constantInstruction(std::string name, const Chunk* chunk, size_t offset) {
     uint8_t constant = chunk->code[offset + 1];
     FMT_PRINT("{:10} {:04}  ", name, constant);
-    printValue(chunk->constants[constant]);
+    Debug_printValue(chunk->constants[constant]);
     FMT_PRINT("\n");
     return (size_t)offset + 2;
 }
 
 
-static size_t constantLongInstruction(std::string name, const Chunk* chunk, size_t offset) {
-        uint32_t constant = (chunk->code[offset + 1])
-                            | (chunk->code[offset + 2] << 8)
-                            | (chunk->code[offset + 3] << 16);
-        FMT_PRINT("{:10} {:04}  ", name, constant);
-        printValue(chunk->constants[constant]);
-        FMT_PRINT("\n");
-        return (size_t)offset + 4;
+static size_t constantLongInstruction(std::string name, const Chunk* chunk,
+                                      size_t offset) {
+    uint32_t constant = (chunk->code[offset + 1]) | (chunk->code[offset + 2] << 8) |
+                        (chunk->code[offset + 3] << 16);
+    FMT_PRINT("{:10} {:04}  ", name, constant);
+    Debug_printValue(chunk->constants[constant]);
+    FMT_PRINT("\n");
+    return (size_t)offset + 4;
 }
 
 static size_t byteInstruction(std::string name, const Chunk* chunk, size_t offset) {
     return 1;
 }
 
-static size_t jumpInstruction(std::string name, const Chunk* chunk, uint8_t j, size_t offset) {
+static size_t jumpInstruction(std::string name, const Chunk* chunk, uint8_t j,
+                              size_t offset) {
     return 1;
 }
 
@@ -91,8 +81,7 @@ size_t Chunk::disassembleInstruction(size_t offset) {
     FMT_PRINT("{:04} ", offset);
     if (offset > 0 && lines[offset] == lines[offset - 1]) {
         FMT_PRINT("   | ");
-    }
-    else {
+    } else {
         FMT_PRINT("{:4} ", lines[offset]);
     }
 
@@ -176,7 +165,7 @@ size_t Chunk::disassembleInstruction(size_t offset) {
 
         case OpCode::JUMP_FALSE:
             return jumpInstruction("JUMP_FALSE", this, 1, offset);
-    
+
         default:
             FMT_PRINT("Uknown opcode {}\n", (int)instruction);
             return offset + 1;

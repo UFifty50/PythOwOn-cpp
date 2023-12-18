@@ -1,57 +1,104 @@
 #ifndef VM_HPP
 #define VM_HPP
 
+#include <functional>
+#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
 
-#include "Common.hpp"
 #include "Chunk.hpp"
+#include "Common.hpp"
+#include "DataStructures/LinkedList.hpp"
+#include "DataStructures/Stack.hpp"
 #include "Value.hpp"
 
 
-
-
 class VM {
-private:
-    Chunk* chunk;
-    uint8_t* ip;
-    Stack<Value> stack;
-
 public:
-    VM();    // initVM()
-    ~VM();   // freeVM()
+    struct State {
+        std::shared_ptr<Chunk> chunk;
+        uint8_t* ip;
+        Stack<Value> stack;
+        std::unordered_map<ObjString, Value> strings;
+        LinkedList::Single<Obj*> objects;
+    };
 
-    
-    inline uint8_t readByte() { return *ip++; }
-    
-    inline Value readConstant() { return chunk->constants[readByte()]; }
-    inline Value readConstantLong() { 
+    static State VMstate;
+
+    VM() { initVM(); }
+    ~VM() { shutdownVM(); }
+
+    static void initVM();
+    static void shutdownVM();
+
+    static uint8_t readByte() { return *VMstate.ip++; }
+
+    static Value readConstant() { return VMstate.chunk->constants[readByte()]; }
+    static Value readConstantLong() {
         uint32_t index = (readByte() << 16) | (readByte() << 8) | readByte();
-        return chunk->constants[index];
+        return VMstate.chunk->constants[index];
     }
 
-    // template<typename T> inline InterpretResult binaryOp(std::function<Value(double)> as, T op)
-    template<typename F, typename T>
-    std::optional<InterpretResult> binaryOp(F op, std::function<Value(T)> type) {
-        if (!stack.peek(0).isNumber() || !stack.peek(1).isNumber()) {
-            runtimeError("Operands must be numbers.");
-            return InterpretResult::RUNTIME_ERROR;
+    template <typename O>
+    static O* newObject(ObjType type) {
+        Obj* object = (Obj*)new O();
+        object->type = type;
+
+        VMstate.objects.push(object);
+
+        return (O*)object;
+    }
+
+    static void addString(ObjString* string, Value value) {
+        VMstate.strings.emplace(*string, value);
+    }
+
+    static void setChunk(std::shared_ptr<Chunk> chunk);
+    // Chunk* getChunk();
+    static InterpretResult run();
+
+    template <AllPrintable... Ts>
+    static void runtimeError(std::string message, Ts... args);
+
+    /// <summary>
+    /// Performs a binary operation on the stack.
+    /// verifierFn is a function that checks if the top two values of the stack are
+    /// valid for the operation.
+    /// </summary>
+    /// <typeparam name="Op">The binary operation to do.</typeparam>
+    /// <param name="verifyFn">A function to verify that the stack contains values valid
+    /// for the specified binary operation.</param>
+    /// <returns>RUNTIME_ERROR if an error occurred, otherwise nullopt.</returns>
+    template <typename Op>
+    static std::optional<InterpretResult> binaryOp(
+        std::function<InterpretResult(void)> verifyFn) {
+        if (verifyFn() != InterpretResult::OK) return InterpretResult::RUNTIME_ERROR;
+
+        Value b = VMstate.stack.pop();
+        Value a = VMstate.stack.pop();
+        auto val = Op{}(a, b);
+
+        if constexpr (std::is_same_v<decltype(val), bool>) {
+            VMstate.stack.push(Value::boolVal(val));
+        } else if constexpr (std::is_same_v<decltype(val), std::string>) {
+            VMstate.stack.push(Value::objectVal(ObjString::create(val)));
+        } else if constexpr (std::is_same_v<decltype(val), Obj*>) {
+            VMstate.stack.push(Value::objectVal(val));
+        } else if constexpr (std::is_same_v<decltype(val), Value>) {
+            VMstate.stack.push(val);
+        } else {
+            FMT_PRINT("Unknown type, type was {}.\n", typeid(val).name());
         }
 
-        Value b = stack.pop();
-        Value a = stack.pop();
-        stack.push(type(op(a, b)));
-        
         return std::nullopt;
     }
 
-    void setChunk(Chunk* chunk);
-    Chunk* getChunk();
-    InterpretResult run();
-
-    template <AllPrintable... Ts>
-    void runtimeError(std::string message, Ts... args);
+private:
+    static InterpretResult digitChecker();
+    static InterpretResult stringChecker();
+    static InterpretResult addableChecker();
+    static InterpretResult multiplicableChecker();
 };
 
 #endif

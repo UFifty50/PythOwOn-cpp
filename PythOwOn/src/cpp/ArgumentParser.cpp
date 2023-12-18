@@ -1,120 +1,102 @@
-#include <stdexcept>
+#include "ArgumentParser.hpp"
+
+#include <algorithm>
+#include <ranges>
+#include <set>
 #include <sstream>
+#include <stdexcept>
 
 #include "fmt/core.h"
 
 #include "Common.hpp"
-#include "ArgumentParser.hpp"
 
 
 ArgumentParser::ArgumentParser(int argc, char** argv) {
     for (int i = 0; i < argc; i++) {
-        args.push_back(argv[i]);
+        this->argv.push_back(argv[i]);
     }
 }
 
-ArgumentParser::~ArgumentParser() {
-    args.clear();
-}
-
-template<typename T>
-inline bool ArgumentParser::isArg(T arg, std::map<T, Arg> argMap) {
-    return (argMap.find(arg) != argMap.end());
-}
+ArgumentParser::~ArgumentParser() { argv.clear(); }
 
 
-void ArgumentParser::defaultBehaviour() {
+uint8_t ArgumentParser::defaultBehaviour() {
     if (defaultArg.empty()) {
-        try {
-            throw std::invalid_argument("No default behaviour set when calling defaultBehaviour");
-        } catch (std::invalid_argument& e) {
-            FMT_PRINT("Error: {}\n", e.what());
-            exit(-1);
-        }
+        FMT_PRINT("Error: {0}\n",
+                  "No default behaviour set when calling defaultBehaviour");
+        return 1;
     } else {
-        defaultT(defaultArg);
+        return defaultT(defaultArg);
     }
 }
 
-void ArgumentParser::defaultError() {
+uint8_t ArgumentParser::defaultError() {
     if (errorArg.empty()) {
-        try {
-            throw std::invalid_argument("No default error set when calling defaultError");
-        } catch (std::invalid_argument& e) {
-            FMT_PRINT("Error: {}\n", e.what());
-            exit(-1);
-        }
+        FMT_PRINT("Error: No default error set when calling defaultError\n");
+        return 1;
     } else {
-        defaultT(defaultArg);
+        return defaultT(defaultArg);
     }
 }
 
-void ArgumentParser::defaultT(std::string arg) {
-    auto argIterator = std::make_pair(
-        longArgs.find(arg),
-        aliasArgs.find(arg[0])
-    );
+uint8_t ArgumentParser::defaultT(std::string arg) {
+    auto argIterator = std::make_pair(longArgs.find(arg), aliasArgs.find(arg[0]));
 
     // execute the callback from the first non-end iterator
     if (argIterator.first != longArgs.end()) {
-        argIterator.first->second.callback("");
+        return argIterator.first->second.callback("");
     } else if (argIterator.second != aliasArgs.end()) {
-        argIterator.second->second.callback("");
+        return argIterator.second->second.callback("");
     } else {
         FMT_PRINT("This shouldn't happen...");
-        exit(-1);
+        return 1;
     }
 }
 
 void ArgumentParser::setDefaultBehaviour(std::string defaultArg) {
-    if (longArgs.contains(defaultArg) || (aliasArgs.contains(defaultArg[0]) && defaultArg.length() == 1)) {
+    if (longArgs.contains(defaultArg) ||
+        (aliasArgs.contains(defaultArg[0]) && defaultArg.length() == 1)) {
         this->defaultArg = defaultArg;
     } else {
-        try {
-            throw std::invalid_argument("Unknown/Unset argument when setting defaultBehaviour: " + defaultArg);
-        } catch (std::invalid_argument& e) {
-            FMT_PRINT("Error: {}\n", e.what());
-            exit(-1);
-        }
+        FMT_PRINT("Error: Unknown/Unset argument when setting defaultBehaviour: {}\n",
+                  defaultArg);
+        exit(1);
     }
 }
 
 void ArgumentParser::setDefaultError(std::string errorArg) {
-    if (longArgs.contains(errorArg) || (aliasArgs.contains(errorArg[0]) && errorArg.length() == 1)){
+    if (longArgs.contains(errorArg) ||
+        (aliasArgs.contains(errorArg[0]) && errorArg.length() == 1)) {
         this->errorArg = errorArg;
     } else {
-        try {
-            throw std::invalid_argument("Unknown/Unset argument when setting defaultError: " + errorArg);
-        } catch (std::invalid_argument& e) {
-            FMT_PRINT("Error: {}\n", e.what());
-            exit(-1);
-        }
+        FMT_PRINT("Error: Unknown/Unset argument when setting defaultError: {}\n",
+                  errorArg);
+        exit(1);
     }
 }
 
 void ArgumentParser::setDefaultHelp() {
-    auto printHelp = [&](std::string _) {
-        FMT_PRINT("Usage: {} [options]\n\nOptions:\n", args[0]);
+    auto printHelp = [&](std::string _) -> uint8_t {
+        FMT_PRINT("Usage: {} [options]\n\nOptions:\n", argv[0]);
         // print out help information for each long argument
         size_t maxLongArgLength = 0;
-        for (auto const& [key, value] : longArgs) {
-            Arg arg = value;
+        std::string helpString;
+
+        for (const auto& [key, arg] : longArgs) {
             std::string longArg = "--" + key;
+            std::string shortArg =
+                arg.alias != '\0' ? "-" + std::string(1, arg.alias) : "";
+
             maxLongArgLength = std::max(maxLongArgLength, longArg.length());
-        }
 
-        for (auto const& [key, value] : longArgs) {
-            Arg arg = value;
-            std::string longArg = "--" + key;
-            std::string shortArg = "";
-            if (arg.alias != '\0') {
-                shortArg = "-" + std::string(1, arg.alias);
-            }
-
-            std::string reqVal = fmt::format("{:<7}", arg.requiresArg ? "<VALUE>" : "");
+            std::string reqVal = FMT_FORMAT("{:<7}", arg.requiresArg ? "<VALUE>" : "");
             // TODO: make this dynamic from the length of the longest argument
-            FMT_PRINT("{:<5} {} {:<{}} {}\n", shortArg, longArg, reqVal, 21 + reqVal.length() - longArg.length(), arg.help);
+            helpString += FMT_FORMAT("{:<5} {} {:<{}} {}\n", shortArg, longArg, reqVal,
+                                     21 + reqVal.length() - longArg.length(), arg.help);
         }
+
+        FMT_PRINT(helpString);
+        return 0;
     };
 
     registerLongArg("help", {"Print this help message", printHelp});
@@ -131,31 +113,25 @@ void ArgumentParser::registerLongArg(std::string argName, Arg arg) {
 void ArgumentParser::aliasLongArg(std::string arg, char alias) {
     auto it = longArgs.find(arg);
     if (it == longArgs.end()) {
-        try {
-            throw std::invalid_argument("Argument " + arg + " does not exist during aliasing");
-        } catch (std::invalid_argument& e) {
-            FMT_PRINT("Error: {}\n", e.what());
-            exit(-1);
-        }
+        FMT_PRINT("Error: Argument {0} did not exist when aliasing\n", arg);
+        exit(1);
     }
     aliasArgs[alias] = it->second;
     it->second.alias = alias;
 }
 
-void ArgumentParser::parse() {
+uint8_t ArgumentParser::parse() {
     std::vector<std::pair<Arg*, std::string>> toExecute;
+    std::set<uint8_t> returnVals;
 
-    if (args.size() == 1) {
-        defaultBehaviour();
-        exit(0);
+    if (argv.size() == 1) {
+        return defaultBehaviour();
     }
 
-    for (size_t i = 1; i < args.size(); i++) {
-        std::string arg = args[i];
+    for (auto it = argv.begin(); it != argv.end(); it++) {
+        std::string arg = *it;
 
-        if (arg[0] != '-') {
-            continue;
-        }
+        if (arg[0] != '-') continue;
 
         Arg* argInfo = nullptr;
 
@@ -174,20 +150,25 @@ void ArgumentParser::parse() {
         if (!argInfo) {
             FMT_PRINT("Unknown argument '{}'!\n", arg);
             defaultError();
-            exit(0);
-        } else if (argInfo->requiresArg && (i + 1 >= args.size() || args[i + 1][0] == '-')) {
+            return 1;
+
+        } else if (argInfo->requiresArg && (arg == argv.back() || (it[1][0] == '-'))) {
             FMT_PRINT("Error: Argument '{}' requires a value!\n", arg);
             defaultError();
-            exit(0);
+            return 1;
+
         } else {
-            toExecute.push_back({
-                argInfo,
-                argInfo->requiresArg ? args[++i] : ""
-            });
+            toExecute.push_back({argInfo, argInfo->requiresArg ? *++it : ""});
         }
     }
 
     for (auto& arg : toExecute) {
-        arg.first->callback(arg.second);
+        returnVals.insert(arg.first->callback(arg.second));
     }
+
+    // if any of returnVals != 0
+    if (std::ranges::any_of(returnVals, [](uint8_t val) { return val != 0; })) {
+        return 1;
+    }
+    return 0;
 }

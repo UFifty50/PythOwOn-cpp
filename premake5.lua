@@ -1,6 +1,7 @@
 workspace "PythOwOn"
     architecture "x86_64"
     configurations { "Logging", "Debug", "Release"}
+    flags { "MultiProcessorCompile" }
     startproject "PythOwOn"
     debugdir "bin/%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}/"
 
@@ -67,7 +68,10 @@ project "PythOwOn"
      --   defines {}
 
     filter "toolset:msc*"
-        buildoptions "/analyze:external-"
+        buildoptions { 
+            "/analyze:external-",
+            "/Zc:preprocessor"
+        }
 
     filter "configurations:Logging"
         defines { "_DEBUG", "TRACE_EXECUTION" }

@@ -1,12 +1,31 @@
 #ifndef CHUNK_HPP
 #define CHUNK_HPP
 
-#include <vector>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include "Value.hpp"
 
+
+class Chunk {
+public:
+    Chunk() = default;
+    ~Chunk() = default;
+
+    void write(uint8_t byte, size_t line);
+    size_t addConstant(Value value);
+    void writeConstant(Value value, size_t line);
+
+    std::vector<size_t> lines;
+    std::vector<uint8_t> code;
+    std::vector<Value> constants;
+
+#if defined(TRACE_EXECUTION)
+    void disassemble(std::string name);
+    size_t disassembleInstruction(size_t offset);
+#endif
+};
 
 enum OpCode {
     CONSTANT,
@@ -43,25 +62,6 @@ enum OpCode {
     DUP,
     CALL,
     RETURN,
-};
-
-class Chunk {
-public:
-    Chunk();
-    ~Chunk();
-
-    void write(uint8_t byte, size_t line);
-    size_t addConstant(Value value);
-    void writeConstant(Value value, size_t line);
-
-    std::vector<size_t> lines;
-    std::vector<uint8_t> code;
-    ValueArray constants;
-
-#if defined(TRACE_EXECUTION)
-    void disassemble(std::string name);
-    size_t disassembleInstruction(size_t offset);
-#endif
 };
 
 #endif

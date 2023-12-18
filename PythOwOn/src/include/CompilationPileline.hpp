@@ -1,6 +1,7 @@
 #ifndef COMPILEPIPE_HPP
 #define COMPILEPIPE_HPP
 
+#include <memory>
 #include <string>
 
 #include "Chunk.hpp"
@@ -10,15 +11,16 @@
 
 
 class CompilationPileline {
-private:
-    Compiler* compiler;
-    VM* vm;
-
 public:
-    CompilationPileline();
-    ~CompilationPileline();
+    CompilationPileline() : vm(std::make_unique<VM>()) {}
+
+    ~CompilationPileline() = default;
 
     InterpretResult interpret(std::string source);
+
+private:
+    std::unique_ptr<Compiler> compiler;
+    std::unique_ptr<VM> vm;
 };
 
 #endif

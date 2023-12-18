@@ -1,121 +1,197 @@
-#include <string>
-#include <functional>
-#include <algorithm>
-
 #include "VirtualMachine.hpp"
-#include "Value.hpp"
+
+#include <algorithm>
+#include <functional>
+#include <string>
+
 #include "Common.hpp"
+#include "DataStructures/Stack.hpp"
+#include "Value.hpp"
 
 
-VM::VM() {
-    stack = Stack<Value>();
+VM::State VM::VMstate;
+
+
+void VM::initVM() {
+    VMstate.stack = Stack<Value>();
+    VMstate.strings = std::unordered_map<ObjString, Value>();
+    VMstate.objects = LinkedList::Single<Obj*>();
+    VMstate.ip = nullptr;
 }
 
-VM::~VM() = default;
-
-void VM::setChunk(Chunk* chunk) {
-    this->chunk = chunk;
-    ip = chunk->code.data();
+void VM::shutdownVM() {
+    VMstate.chunk.reset();
+    VMstate.stack.reset();
+    VMstate.objects.clear();
+    VMstate.ip = nullptr;
 }
 
-Chunk* VM::getChunk() {
-    return chunk;
+void VM::setChunk(std::shared_ptr<Chunk> chunk) {
+    VMstate.chunk = chunk;
+    VMstate.ip = chunk->code.data();
 }
 
-template<AllPrintable... Ts>
+// Chunk* VM::getChunk() { return chunk; }
+
+template <AllPrintable... Ts>
 void VM::runtimeError(std::string message, Ts... args) {
-    FMT_PRINT(message+"\n", args...);
+    FMT_PRINT(message + "\n", args...);
 
-    int instruction = ip - chunk->code.data();
-    size_t line = chunk->lines[instruction];
+    uint8_t instruction = VMstate.ip - VMstate.chunk->code.data();
+    size_t line = VMstate.chunk->lines[instruction];
     FMT_PRINT("[line {}] in script\n", line);
-    stack.reset();
+    VMstate.stack.reset();
 }
 
 InterpretResult VM::run() {
     while (true) {
 #if defined(TRACE_EXECUTION)
         FMT_PRINT("          ");
-        for (auto& value : stack) {
+        for (auto& value : VMstate.stack) {
             FMT_PRINT("[ ");
-            printValue(value);
+            Debug_printValue(value);
             FMT_PRINT(" ]");
         }
         FMT_PRINT("\n");
 
-        chunk->disassembleInstruction((int)(ip - chunk->code.data()));
+        VMstate.chunk->disassembleInstruction(
+            (int)(VMstate.ip - VMstate.chunk->code.data()));
 #endif
+
         uint8_t instruction = readByte();
         switch (instruction) {
             case OpCode::CONSTANT: {
                 Value constant = readConstant();
-                stack.push(constant);
+                VMstate.stack.push(constant);
                 break;
             }
 
-            case OpCode::FALSE: stack.push(Value::boolVal(false)); break;
+            case OpCode::FALSE:
+                VMstate.stack.push(Value::boolVal(false));
+                break;
 
-            case OpCode::TRUE: stack.push(Value::boolVal(true)); break;
+            case OpCode::TRUE:
+                VMstate.stack.push(Value::boolVal(true));
+                break;
 
-            case OpCode::NONE: stack.push(Value::noneVal()); break;
+            case OpCode::NONE:
+                VMstate.stack.push(Value::noneVal());
+                break;
 
             case OpCode::CONSTANT_LONG:
                 Value constant = readConstantLong();
-                stack.push(constant);
+                VMstate.stack.push(constant);
                 break;
 
             case OpCode::EQUAL:
-                Value b = stack.pop();
-                Value a = stack.pop();
-                stack.push(Value::boolVal(a.isEqualTo(b)));
+                Value b = VMstate.stack.pop();
+                Value a = VMstate.stack.pop();
+                VMstate.stack.push(Value::boolVal(a.isEqualTo(b)));
                 break;
 
             case OpCode::GREATER:
-                if (auto a = binaryOp<std::greater<Value>, bool>(std::greater<Value>(), Value::numberVal)) return a.value();
+                if (auto a = binaryOp<std::greater<Value>>(&VM::digitChecker))
+                    return a.value();
                 break;
 
             case OpCode::LESS:
-                if (auto a = binaryOp<std::less<Value>, bool>(std::less<Value>(), Value::numberVal)) return a.value();
+                if (auto a = binaryOp<std::less<Value>>(&VM::digitChecker))
+                    return a.value();
                 break;
-            
-            case OpCode::ADD: 
-                if (auto a = binaryOp<std::plus<Value>, Value>(std::plus<Value>(), Value::asNumber)) return a.value();
+
+            case OpCode::ADD:
+                if (auto a = binaryOp<std::plus<Value>>(&VM::addableChecker))
+                    return a.value();
                 break;
 
             case OpCode::MULTIPLY:
-                if (auto a = binaryOp<std::multiplies<Value>, Value>(std::multiplies<Value>(), Value::asNumber)) return a.value();
+                if (auto a = binaryOp<std::multiplies<Value>>(&VM::multiplicableChecker))
+                    return a.value();
                 break;
-             
+
             case OpCode::DIVIDE:
-                if (auto a = binaryOp<std::divides<Value>, Value>(std::divides<Value>(), Value::asNumber)) return a.value();
+                if (auto a = binaryOp<std::divides<Value>>(&VM::digitChecker))
+                    return a.value();
                 break;
 
             case OpCode::NOT:
-                stack.push(Value::boolVal(stack.pop().isFalsey()));
+                VMstate.stack.push(Value::boolVal(VMstate.stack.pop().isFalsey()));
                 break;
 
             case OpCode::NEGATE: {
-                if (!stack.peek(0).isNumber()) {
+                if (!VMstate.stack.peek(0).isNumber() &&
+                    !VMstate.stack.peek(0).isSpecialNumber()) {
                     runtimeError("Operand must be a number.");
                     return InterpretResult::RUNTIME_ERROR;
                 }
-                stack.push(Value::numberVal(-stack.pop().as.number));
+
+                auto a = VMstate.stack.pop();
+                if (a.isSpecialNumber()) {
+                    a.as.boolean = !a.as.boolean;
+                    VMstate.stack.push(a);
+                    break;
+                }
+
+                bool isDouble = a.isDouble();
+                double val = -(Value::asDouble(a).as.decimal);
+                VMstate.stack.push(Value::numberVal(val, isDouble));
                 break;
             }
 
             case OpCode::LEFTSHIFT:
-                if (auto a = binaryOp<left_shifts<Value>, Value>(left_shifts<Value>(), Value::asNumber)) return a.value();
+                if (auto a = binaryOp<lshift<Value>>(&VM::digitChecker)) return a.value();
                 break;
 
             case OpCode::RIGHTSHIFT:
-                if (auto a = binaryOp<right_shifts<Value>, Value>(right_shifts<Value>(), Value::asNumber)) return a.value();
+                if (auto a = binaryOp<rshift<Value>>(&VM::digitChecker)) return a.value();
                 break;
 
             case OpCode::RETURN: {
-                if (stack.size() > 0) printValue(stack.pop());
+                if (VMstate.stack.size() > 0) printValue(VMstate.stack.pop());
                 FMT_PRINT("\n");
                 return InterpretResult::OK;
             }
         }
     }
+}
+
+InterpretResult VM::digitChecker() {
+    if (!VMstate.stack.peek(0).isNumber() || !VMstate.stack.peek(1).isNumber()) {
+        runtimeError("Operands must be numbers.");
+        return InterpretResult::RUNTIME_ERROR;
+    }
+    return InterpretResult::OK;
+}
+
+InterpretResult VM::stringChecker() {
+    if (!VMstate.stack.peek(0).isObjectType(ObjType::STRING) ||
+        !VMstate.stack.peek(1).isObjectType(ObjType::STRING)) {
+        runtimeError("Operands must be strings.");
+        return InterpretResult::RUNTIME_ERROR;
+    }
+    return InterpretResult::OK;
+}
+
+InterpretResult VM::addableChecker() {
+    if ((VMstate.stack.peek(0).isNumber() && VMstate.stack.peek(1).isNumber()) ||
+        (VMstate.stack.peek(0).isObjectType(ObjType::STRING) &&
+         VMstate.stack.peek(1).isObjectType(ObjType::STRING))) {
+        return InterpretResult::OK;
+    }
+
+    runtimeError("Can only add numbers or strings.");
+    return InterpretResult::RUNTIME_ERROR;
+}
+
+InterpretResult VM::multiplicableChecker() {
+    if ((VMstate.stack.peek(0).isNumber() && VMstate.stack.peek(1).isNumber()) ||
+        (VMstate.stack.peek(0).isNumber() &&
+         VMstate.stack.peek(1).isObjectType(ObjType::STRING)) ||
+        (VMstate.stack.peek(0).isObjectType(ObjType::STRING) &&
+         VMstate.stack.peek(1).isNumber())) {
+        return InterpretResult::OK;
+    }
+
+    runtimeError("Can only multiply numbers.");
+    return InterpretResult::RUNTIME_ERROR;
 }

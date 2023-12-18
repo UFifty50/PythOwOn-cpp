@@ -1,12 +1,14 @@
 #ifndef COMPILER_HPP
 #define COMPILER_HPP
 
-#include <string>
+#include <array>
 #include <functional>
+#include <memory>
+#include <string>
 
 #include "Chunk.hpp"
-#include "Value.hpp"
 #include "Scanner.hpp"
+#include "Value.hpp"
 
 
 enum class Precedence {
@@ -41,11 +43,17 @@ struct Parser {
 };
 
 class Compiler {
+public:
+    Compiler(std::shared_ptr<Chunk> chunkToCompile);
+    ~Compiler() = default;
+
+    bool compile(std::string source);
+
 private:
-    Chunk* chunk;
-    Scanner* scanner;
+    std::shared_ptr<Chunk> chunk;
+    std::unique_ptr<Scanner> scanner;
+    std::array<ParseRule, (int)TokenType::TOKEN_COUNT> rules;
     Parser parser;
-    ParseRule rules[(int)TokenType::TOKEN_COUNT];
 
     void advance();
     void errorAt(Token token, std::string message);
@@ -58,23 +66,18 @@ private:
     inline void emitReturn();
     inline void endCompiler();
 
-//    uint8_t makeConstant(Value value);
+    //    uint8_t makeConstant(Value value);
     void parsePrecedence(Precedence precedence);
 
 
     void expression();
-  //  void statement();
+    //  void statement();
     void unary();
     void binary();
     void literal();
-    inline void number();
-    inline void grouping();
-
-public:
-    Compiler(Chunk* chunkToCompile);
-    ~Compiler();
-
-    bool compile(std::string source);
+    void string();
+    void number();
+    void grouping();
 };
 
 #endif

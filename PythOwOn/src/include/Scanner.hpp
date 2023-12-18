@@ -1,8 +1,8 @@
 #ifndef SCANNER_HPP
 #define SCANNER_HPP
 
-#include <string>
 #include <optional>
+#include <string>
 
 #include "Common.hpp"
 
@@ -18,13 +18,14 @@ private:
     char advance();
     bool match(char expected);
     bool isNext(char expected);
-    char peekNext();
-    char peekNextNext();
-    TokenType checkKeyword(int begin, int length, std::string rest, TokenType type);
+    char peek(int distance);
+    TokenType checkKeyword(uint32_t begin, uint32_t length, std::string rest,
+                           TokenType type);
     TokenType identifierType();
     std::optional<Token> skipWhitespace();
 
     Token makeToken(TokenType type);
+    Token makeToken(TokenType type, std::string token);
     Token errorToken(std::string message);
 
     Token string();
