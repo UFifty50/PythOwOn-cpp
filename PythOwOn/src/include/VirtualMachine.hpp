@@ -11,6 +11,7 @@
 #include "Common.hpp"
 #include "DataStructures/LinkedList.hpp"
 #include "DataStructures/Stack.hpp"
+#include "Object.hpp"
 #include "Value.hpp"
 
 
@@ -20,7 +21,7 @@ public:
         std::shared_ptr<Chunk> chunk;
         uint8_t* ip;
         Stack<Value> stack;
-        std::unordered_map<ObjString, Value> strings;
+        std::unordered_map<Obj*, Value> strings;
         LinkedList::Single<Obj*> objects;
     };
 
@@ -50,8 +51,8 @@ public:
         return (O*)object;
     }
 
-    static void addString(ObjString* string, Value value) {
-        VMstate.strings.emplace(*string, value);
+    static void addString(ObjString* string, const Value& value) {
+        VMstate.strings.emplace((Obj*)string, value);
     }
 
     static void setChunk(std::shared_ptr<Chunk> chunk);

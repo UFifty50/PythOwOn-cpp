@@ -22,7 +22,7 @@ char Scanner::advance() {
 
 bool Scanner::match(char expected) {
     if (AT_END) return false;
-    if (source[current] != expected) return false;
+    if (peek(0) != expected) return false;
     current++;
     return true;
 }
@@ -256,13 +256,13 @@ Token Scanner::number() {
 }
 
 Token Scanner::identifier() {
-    while (IS_ALPHA(source[current]) || IS_DIGIT(source[current])) advance();
+    while (IS_ALPHA(peek(0)) || IS_DIGIT(peek(0))) advance();
     return makeToken(identifierType());
 }
 
 std::optional<Token> Scanner::skipWhitespace() {
     while (true) {
-        char c = source[current];
+        char c = peek(0);
         switch (c) {
             case ' ':
             case '\r':
@@ -304,7 +304,7 @@ Token Scanner::scanToken() {
     if (auto token = skipWhitespace()) return token.value();
     start = current;
 
-    if (AT_END) return makeToken(TokenType::EOF);
+    if (AT_END) return makeToken(TokenType::EOF, "");
 
     char c = advance();
     if (IS_ALPHA(c)) return identifier();

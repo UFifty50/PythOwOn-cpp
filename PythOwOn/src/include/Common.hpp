@@ -21,6 +21,9 @@ template <typename... Ts>
 concept AllPrintable = (Printable<Ts> && ...);
 
 
+using ssize_t = intmax_t;
+
+
 enum class InterpretResult { OK, COMPILE_ERROR, RUNTIME_ERROR };
 
 enum class TokenType {  // TODO: add const token (maybe?)

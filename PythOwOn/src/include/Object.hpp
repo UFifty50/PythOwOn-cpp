@@ -27,4 +27,11 @@ struct ObjString {
     static ObjString* create(const std::string& str, std::tuple<int, int> slice);
 };
 
+template <>
+struct std::hash<ObjString> {
+    std::size_t operator()(const ObjString& string) const {
+        return std::hash<std::string>()(string.str);
+    }
+};
+
 #endif

@@ -31,7 +31,7 @@ struct Value {
     ValueType type;
     union {
         bool boolean;
-        intmax_t integer;
+        ssize_t integer;
         double decimal;
         Obj* obj;
     } as;
@@ -40,7 +40,7 @@ struct Value {
 
     static Value boolVal(bool value) { return {ValueType::BOOL, {.boolean = value}}; }
 
-    static Value integerVal(intmax_t value) {
+    static Value integerVal(ssize_t value) {
         return {ValueType::INT, {.integer = value}};
     }
 
@@ -49,7 +49,7 @@ struct Value {
     }
 
     static Value numberVal(double value, bool isDouble) {
-        return isDouble ? doubleVal(value) : integerVal((intmax_t)value);
+        return isDouble ? doubleVal(value) : integerVal((ssize_t)value);
     }
 
     static Value infinity(bool positive) {
@@ -76,7 +76,7 @@ struct Value {
 
     static Value asInteger(Value value) {
         if (value.isInteger()) return value;
-        if (value.isDouble()) return Value::integerVal((intmax_t)value.as.decimal);
+        if (value.isDouble()) return Value::integerVal((ssize_t)value.as.decimal);
         if (value.isBool()) return Value::integerVal(value.as.boolean ? 1 : 0);
         return Value::noneVal();
     }
@@ -133,9 +133,7 @@ struct Value {
             case ValueType::DOUBLE:
                 return as.decimal == other.as.decimal;
             case ValueType::OBJECT: {
-                ObjString* stringA = Value::asObject(*this)->asString();
-                ObjString* stringB = Value::asObject(other)->asString();
-                return stringA->str == stringB->str;
+                return as.obj == other.as.obj;
             }
 
             default:
@@ -164,14 +162,14 @@ struct Value {
         if constexpr (std::is_same_v<A, Obj*> && std::is_same_v<B, Value>) {
             if (b.isNumber()) {
                 std::string str = "";
-                for (size_t i = 0; i < asInteger(b).as.integer; i++)
+                for (ssize_t i = 0; i < asInteger(b).as.integer; i++)
                     str += a->asString()->str;
                 return Value::objectVal(ObjString::create(str));
             }
         } else if constexpr (std::is_same_v<A, Value> && std::is_same_v<B, Obj*>) {
             if (a.isNumber()) {
                 std::string str = "";
-                for (size_t i = 0; i < asInteger(a).as.integer; i++)
+                for (ssize_t i = 0; i < asInteger(a).as.integer; i++)
                     str += b->asString()->str;
                 return Value::objectVal(ObjString::create(str));
             }

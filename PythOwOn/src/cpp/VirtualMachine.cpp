@@ -14,7 +14,7 @@ VM::State VM::VMstate;
 
 void VM::initVM() {
     VMstate.stack = Stack<Value>();
-    VMstate.strings = std::unordered_map<ObjString, Value>();
+    VMstate.strings = std::unordered_map<Obj*, Value>();
     VMstate.objects = LinkedList::Single<Obj*>();
     VMstate.ip = nullptr;
 }
