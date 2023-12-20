@@ -1,5 +1,7 @@
 #ifndef OBJECT_HPP
 #define OBJECT_HPP
+
+#include <ostream>
 #include <string>
 #include <tuple>
 
@@ -17,6 +19,7 @@ struct Obj {
     ObjString* asString() const { return (ObjString*)this; }
 
     bool operator==(const Obj& other) const;
+    std::ostream& operator<<(std::ostream& os) const;
 };
 
 struct ObjString {

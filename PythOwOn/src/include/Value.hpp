@@ -2,6 +2,7 @@
 #define VALUE_HPP
 
 #include <cmath>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -280,6 +281,34 @@ struct Value {
             return Value::integerVal(as.integer >> other.as.integer);
 
         return Value::noneVal();
+    }
+
+    std::ostream& operator<<(std::ostream& os) const {
+        switch (type) {
+            case ValueType::NONE:
+                os << 0 << 0x0;
+                break;
+            case ValueType::BOOL:
+                os << std::string(as.boolean ? "true" : "false");
+                break;
+            case ValueType::INT:
+                os << std::to_string(as.integer);
+                break;
+            case ValueType::DOUBLE:
+                os << std::to_string(as.decimal);
+                break;
+            case ValueType::INFINITY:
+                os << std::string(as.boolean ? "inf" : "-inf");
+                break;
+            case ValueType::NAN:
+                os << std::string(as.boolean ? "nan" : "-nan");
+                break;
+            case ValueType::OBJECT:
+                as.obj->operator<<(os);
+                break;
+        }
+
+        return os;
     }
 };
 

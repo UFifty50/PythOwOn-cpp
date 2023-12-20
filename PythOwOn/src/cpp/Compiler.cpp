@@ -225,6 +225,14 @@ void Compiler::printStatement() {
 void Compiler::statement() {
     if (match(TokenType::PRINT)) {
         printStatement();  // TODO: move to naitive function
+    } else if (match(TokenType::RETURN)) {
+        if (match(TokenType::SEMI)) {
+            emitReturn();
+        } else {
+            expression();
+            consume(TokenType::SEMI, "Expected ';' after return value.");
+            emitByte(OpCode::RETURN);
+        }
     } else {
         expressionStatement();
     }

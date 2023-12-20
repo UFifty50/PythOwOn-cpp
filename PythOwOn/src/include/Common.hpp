@@ -24,7 +24,47 @@ concept AllPrintable = (Printable<Ts> && ...);
 using ssize_t = intmax_t;
 
 
-enum class InterpretResult { OK, COMPILE_ERROR, RUNTIME_ERROR };
+class InterpretResult {
+public:
+    enum Result : uint8_t { OK, COMPILE_ERROR, RUNTIME_ERROR };
+    enum Cause : uint8_t { NONE, UNTERMINATED };
+
+    InterpretResult() = default;
+    constexpr InterpretResult(Result result) : result(result), cause(NONE) {}
+    constexpr InterpretResult(Result result, Cause cause)
+        : result(result), cause(cause) {}
+
+
+    constexpr bool isError() const { return result != OK; }
+
+    constexpr std::string toString() const {
+        if (result == COMPILE_ERROR) {
+            switch (cause) {
+                case UNTERMINATED:
+                    return "COMPILE_ERROR: UNTERMINATED";
+                default:
+                    return "COMPILE_ERROR: UNKNOWN CAUSE";
+            }
+        }
+
+        switch (result) {
+            case OK:
+                return "OK";
+            case RUNTIME_ERROR:
+                return "RUNTIME_ERROR";
+            default:
+                return "UNKNOWN";
+        }
+    }
+
+    constexpr operator Result() const { return result; }
+
+    explicit constexpr operator bool() const = delete;
+
+private:
+    Result result;
+    Cause cause;
+};
 
 enum class TokenType {
     // single char tokens

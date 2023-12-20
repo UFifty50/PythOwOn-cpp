@@ -7,15 +7,28 @@
 
 
 InterpretResult CompilationPileline::interpret(std::string source) {
+    auto [result, chunk] = compile(source);
+    if (result == InterpretResult::OK) {
+        vm->setChunk(chunk);
+        return vm->run();
+    }
+
+    return result;
+}
+
+std::pair<InterpretResult, std::shared_ptr<Chunk>> CompilationPileline::compile(
+    std::string source) {
     std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
     compiler = std::make_unique<Compiler>(chunk);
 
     if (!compiler->compile(source)) {
-        return InterpretResult::COMPILE_ERROR;
+        return {InterpretResult::COMPILE_ERROR, nullptr};
     }
 
-    vm->setChunk(chunk);
+    return {InterpretResult::OK, chunk};
+}
 
-    InterpretResult result = vm->run();
-    return result;
+InterpretResult CompilationPileline::runCompiled(std::shared_ptr<Chunk> chunk) {
+    vm->setChunk(chunk);
+    return vm->run();
 }

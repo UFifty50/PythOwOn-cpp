@@ -17,6 +17,8 @@ public:
     ~CompilationPileline() = default;
 
     InterpretResult interpret(std::string source);
+    std::pair<InterpretResult, std::shared_ptr<Chunk>> compile(std::string source);
+    InterpretResult runCompiled(std::shared_ptr<Chunk> chunk);
 
 private:
     std::unique_ptr<Compiler> compiler;

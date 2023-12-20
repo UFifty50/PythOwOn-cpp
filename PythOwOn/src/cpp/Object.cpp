@@ -1,5 +1,7 @@
 #include "Object.hpp"
 
+#include <ostream>
+
 #include "VirtualMachine.hpp"
 
 
@@ -15,6 +17,16 @@ bool Obj::operator==(const Obj& other) const {
 }
 
 bool ObjString::operator==(const ObjString& other) const { return str == other.str; }
+
+
+std::ostream& Obj::operator<<(std::ostream& os) const {
+    switch (type) {
+        case ObjType::STRING:
+            return os << asString()->str;
+        default:
+            return os << std::string("None");
+    }
+}
 
 
 ObjString* ObjString::create(const std::string& str) {

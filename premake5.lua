@@ -9,6 +9,7 @@ outputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 includeDirs = {}
 includeDirs["fmt"] = "PythOwOn/vendor/fmt/include"
+includeDirs["cxxopts"] = "PythOwOn/vendor/cxxopts"
 
 group "Dependencies"
     include "PythOwOn/vendor/fmt"
@@ -41,7 +42,8 @@ project "PythOwOn"
 
     includedirs { 
         "%{prj.name}/src/include/",
-        "%{includeDirs.fmt}"
+        "%{includeDirs.fmt}",
+        "%{includeDirs.cxxopts}"
     }
 
     links {
