@@ -1,0 +1,18 @@
+﻿program       -> declaration* ;
+
+exprStmt      -> expression ";" ;
+
+printStmt     -> "print" expression ";" ;
+
+statement     -> exprStmt
+               | printStmt
+               | block ;
+
+block          → "{" declaration* "}" ;
+
+declaration   -> varDecl
+               | statement ;
+
+varDecl       -> "let" IDENTIFIER ( "=" exprStmt )? ";" ;
+
+expression    -> // im too lazy to write this ebnf, use your logic for this one ;

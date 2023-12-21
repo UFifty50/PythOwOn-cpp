@@ -17,7 +17,7 @@ public:
     void write(uint8_t byte, size_t line);
     uint32_t addConstant(Value value);
     void writeConstant(Value value, size_t line);
-    void writeGlobal(OpCode setOrGet, uint32_t global, size_t line);
+    void writeVariable(OpCode op, uint32_t var, size_t line);
 
     std::vector<size_t> lines;
     std::vector<uint8_t> code;
@@ -36,6 +36,7 @@ enum OpCode {
     TRUE,
     FALSE,
     POP,
+    POPN,  // TODO: implement (pops n values from stack, useful for end of scope)
     GET_LOCAL,
     GET_LOCAL_LONG,
     SET_LOCAL,

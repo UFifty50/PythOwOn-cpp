@@ -12,7 +12,13 @@ void Chunk::write(uint8_t byte, size_t line) {
 
 uint32_t Chunk::addConstant(Value value) {
     constants.emplace_back(value);
-    return constants.size() - 1;
+
+    if (constants.size() < UINT32_MAX) {
+        return constants.size() - 1;
+    }
+
+    FMT_PRINT("Too many constants in one chunk\n");
+    return UINT32_MAX;
 }
 
 void Chunk::writeConstant(Value value, size_t line) {
@@ -32,18 +38,19 @@ void Chunk::writeConstant(Value value, size_t line) {
     }
 }
 
-void Chunk::writeGlobal(OpCode setOrGet, uint32_t global, size_t line) {
-    if (global < UINT8_MAX) {
-        write(setOrGet, line);
-        write((uint8_t)global, line);
-    } else if (global < UINT32_MAX) {
-        write((OpCode)((int)setOrGet + 1), line);
-        write((uint8_t)(global >> 24) & 0xff, line);
-        write((uint8_t)((global >> 16) & 0xff), line);
-        write((uint8_t)((global >> 8) & 0xff), line);
-        write((uint8_t)(global & 0xff), line);
+void Chunk::writeVariable(OpCode op, uint32_t var, size_t line) {
+    if (var < UINT8_MAX) {
+        write(op, line);
+        write((uint8_t)var, line);
+    } else if (var < UINT32_MAX) {
+        op = (OpCode)((int)op + 1);
+        write(op, line);
+        write((uint8_t)(var >> 24) & 0xff, line);
+        write((uint8_t)((var >> 16) & 0xff), line);
+        write((uint8_t)((var >> 8) & 0xff), line);
+        write((uint8_t)(var & 0xff), line);
     } else {
-        FMT_PRINT("Too many globals in one chunk\n");
+        FMT_PRINT("Too many variables in one chunk\n");
     }
 }
 
@@ -69,15 +76,26 @@ static size_t constantInstruction(std::string name, const Chunk* chunk, size_t o
 static size_t constantLongInstruction(std::string name, const Chunk* chunk,
                                       size_t offset) {
     uint32_t constant = (chunk->code[offset + 1]) | (chunk->code[offset + 2] << 8) |
-                        (chunk->code[offset + 3] << 16) | (chunk->code[offset + 3] << 24);
+                        (chunk->code[offset + 3] << 16) | (chunk->code[offset + 4] << 24);
     FMT_PRINT("{:10} {:04}  ", name, constant);
     Debug_printValue(chunk->constants[constant]);
     FMT_PRINT("\n");
-    return (size_t)offset + 4;
+    return (size_t)offset + 5;
 }
 
 static size_t byteInstruction(std::string name, const Chunk* chunk, size_t offset) {
-    return 1;
+    uint8_t slot = chunk->code[offset + 1];
+    FMT_PRINT("{:10} {:04}  ", name, slot);
+    FMT_PRINT("\n");
+    return (size_t)offset + 2;
+}
+
+static size_t longInstruction(std::string name, const Chunk* chunk, size_t offset) {
+    uint32_t slot = (chunk->code[offset + 1]) | (chunk->code[offset + 2] << 8) |
+                    (chunk->code[offset + 3] << 16) | (chunk->code[offset + 4] << 24);
+    FMT_PRINT("{:10} {:04}  ", name, slot);
+    FMT_PRINT("\n");
+    return (size_t)offset + 5;
 }
 
 static size_t jumpInstruction(std::string name, const Chunk* chunk, uint8_t j,
@@ -130,14 +148,15 @@ size_t Chunk::disassembleInstruction(size_t offset) {
         case OpCode::GET_LOCAL:
             return byteInstruction("GET_LOCAL", this, offset);
 
-        case OpCode::GET_LOCAL_LONG:
-            return constantLongInstruction("GET_LOCAL_LONG", this, offset);
+        case OpCode::GET_LOCAL_LONG:  // TODO: output file with debug mapping of slot
+                                      // number to name and use that here
+            return longInstruction("GET_LOCAL_LONG", this, offset);
 
         case OpCode::SET_LOCAL:
             return byteInstruction("SET_LOCAL", this, offset);
 
         case OpCode::SET_LOCAL_LONG:
-            return constantLongInstruction("SET_LOCAL_LONG", this, offset);
+            return longInstruction("SET_LOCAL_LONG", this, offset);
 
         case OpCode::GET_GLOBAL:
             return constantInstruction("GET_GLOBAL", this, offset);

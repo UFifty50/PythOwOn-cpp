@@ -20,6 +20,8 @@ public:
     void push(T value) { this->emplace_back(value); }
     void reset() { this->clear(); }
 
+    using std::vector<T>::operator[];
+
     using std::vector<T>::size;
     using std::vector<T>::begin;
     using std::vector<T>::end;

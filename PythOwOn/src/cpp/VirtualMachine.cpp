@@ -81,6 +81,30 @@ InterpretResult VM::run() {
                 VMstate.stack.pop();
                 break;
 
+            case OpCode::GET_LOCAL: {
+                uint8_t slot = readByte();
+                VMstate.stack.push(VMstate.stack.peek(slot));
+                break;
+            }
+
+            case OpCode::GET_LOCAL_LONG: {
+                uint32_t slot = readLong();
+                VMstate.stack.push(VMstate.stack.peek(slot));
+                break;
+            }
+
+            case OpCode::SET_LOCAL: {
+                uint8_t slot = readByte();
+                VMstate.stack[slot] = VMstate.stack.peek(0);
+                break;
+            }
+
+            case OpCode::SET_LOCAL_LONG: {
+                uint32_t slot = readLong();
+                VMstate.stack[slot] = VMstate.stack.peek(0);
+                break;
+            }
+
             case OpCode::GET_GLOBAL: {
                 ObjString* name = Value::asObject(readConstant())->asString();
                 if (!VMstate.globals.contains(*name)) {

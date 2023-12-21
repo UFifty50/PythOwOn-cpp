@@ -34,14 +34,18 @@ public:
     static void initVM();
     static void shutdownVM();
 
-    static uint8_t readByte() { return *VMstate.ip++; }
+    static uint8_t readByte() { return *(VMstate.ip++); }
+
+    static uint32_t readLong() {
+        uint32_t value = (readByte() << 24);
+        value |= (readByte() << 16);
+        value |= (readByte() << 8);
+        value |= readByte();
+        return value;
+    }
 
     static Value readConstant() { return VMstate.chunk->constants[readByte()]; }
-    static Value readConstantLong() {
-        uint32_t index =
-            (readByte() << 24) | (readByte() << 16) | (readByte() << 8) | readByte();
-        return VMstate.chunk->constants[index];
-    }
+    static Value readConstantLong() { return VMstate.chunk->constants[readLong()]; }
 
     template <typename O>
     static O* newObject(ObjType type) {

@@ -4,6 +4,7 @@
 #include <array>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "Chunk.hpp"
@@ -42,6 +43,24 @@ struct Parser {
     bool panicMode;
 };
 
+struct Local {
+    Token name;
+    int depth;
+};
+
+struct CompilerState {
+    std::vector<Local> locals;
+    uint32_t scopeDepth;
+
+    CompilerState() : scopeDepth(0) {}
+
+    Local* addLocal(Token name) {
+        locals.push_back(Local{name, -1});
+
+        return &locals.back();
+    }
+};
+
 class Compiler {
 public:
     Compiler(std::shared_ptr<Chunk> chunkToCompile);
@@ -52,6 +71,7 @@ public:
 private:
     std::shared_ptr<Chunk> chunk;
     std::unique_ptr<Scanner> scanner;
+    std::unique_ptr<CompilerState> state;
     std::array<ParseRule, (int)TokenType::TOKEN_COUNT> rules;
     Parser parser;
 
@@ -64,15 +84,19 @@ private:
     inline void emitByte(uint8_t byte);
     inline void emitBytes(uint8_t byte1, uint8_t byte2);
     inline void emitConstant(Value value);
-    inline void emitGlobal(OpCode setOrGet, uint32_t global);
+    inline void emitVariable(OpCode op, uint32_t var);
     inline void emitReturn();
     inline void endCompiler();
 
     //    uint8_t makeConstant(Value value);
     void parsePrecedence(Precedence precedence);
     uint32_t identifierConstant(Token* name);
+    std::optional<uint32_t> resolveLocal(Token name);
+
     uint32_t parseVariable(std::string errorMessage);
+    void markInitialized();
     void defineVariable(uint32_t global);
+    void declareVariable();
 
     void namedVariable(Token name, bool canAssign);
 
@@ -82,6 +106,9 @@ private:
     void statement();
     void declaration();
     void varDeclaration();
+    void block();
+    void beginScope();
+    void endScope();
     void panicSync();
     void unary(bool);
     void binary(bool);

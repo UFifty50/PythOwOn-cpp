@@ -104,6 +104,9 @@ TokenType Scanner::identifierType() {
             }
             return checkKeyword(1, 1, "f", TokenType::IF);
 
+        case 'l':
+            return checkKeyword(1, 2, "et", TokenType::LET);
+
         case 'n':  // can be none, not or nan
             if ((current - start) > 2) {
                 switch (source[start + 1]) {
@@ -158,8 +161,6 @@ TokenType Scanner::identifierType() {
             }
             break;
 
-        case 'v':
-            return checkKeyword(1, 2, "ar", TokenType::LET);
         case 'w':
             return checkKeyword(1, 4, "hile", TokenType::WHILE);
 
@@ -293,10 +294,8 @@ std::optional<Token> Scanner::skipWhitespace() {
             }
 
             default:
-                break;
+                return std::nullopt;
         }
-
-        return std::nullopt;
     }
 }
 
@@ -355,9 +354,10 @@ Token Scanner::scanToken() {
 
         case '"':
             return (peek(0) == '"' && peek(1) == '"') ? multiString() : string();
-    }
 
-    return errorToken("Unexpected character.");
+        default:
+            return errorToken(FMT_FORMAT("Unexpected character: {}.", c));
+    }
 }
 
 Token Scanner::makeToken(TokenType type) {

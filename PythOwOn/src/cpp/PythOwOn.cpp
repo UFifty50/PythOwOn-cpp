@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     if (result.count("interpret")) return repl();
 
     if (result.count("run")) {
-        if (result.count("file")) {
+        if (result.count("file") == 0) {
             std::cout << "You must provide a file to run." << std::endl;
             return 1;
         }
@@ -91,6 +91,11 @@ bool isIncomplete(std::string& line) {
     if (openTripleQuotes) return true;
 
     for (auto it = line.begin(); it != line.end(); it++) {
+        if (*it == '#') break;
+        if (*it == '"') {
+            while ((it + 1) != line.end() && *(it++) != '"') it++;
+            continue;
+        }
         if (*it == '[') openBrackets++;
         if (*it == ']') openBrackets--;
         if (*it == '(') openParentheses++;

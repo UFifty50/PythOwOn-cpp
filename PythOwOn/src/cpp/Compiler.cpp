@@ -12,6 +12,7 @@
 
 
 Compiler::Compiler(std::shared_ptr<Chunk> chunkToCompile) : chunk(chunkToCompile) {
+    state = std::make_unique<CompilerState>();
     parser.hadError = false;
     parser.panicMode = false;
 
@@ -134,8 +135,8 @@ inline void Compiler::emitConstant(Value value) {
     chunk->writeConstant(value, parser.previous.line);
 }
 
-void Compiler::emitGlobal(OpCode setOrGet, uint32_t global) {
-    chunk->writeGlobal(setOrGet, global, parser.previous.line);
+void Compiler::emitVariable(OpCode op, uint32_t var) {
+    chunk->writeVariable(op, var, parser.previous.line);
 }
 
 inline void Compiler::emitReturn() { emitByte(OpCode::RETURN); }
@@ -185,25 +186,89 @@ void Compiler::parsePrecedence(Precedence precedence) {
 }
 
 uint32_t Compiler::identifierConstant(Token* name) {
-    return chunk->addConstant(
-        Value::objectVal(ObjString::create(name->lexeme)));  //, {1, -1}
+    ObjString* str = ObjString::create(name->lexeme);
+    Value objVal = Value::objectVal(str);
+    return chunk->addConstant(objVal);
+}
+
+std::optional<uint32_t> Compiler::resolveLocal(Token name) {
+    for (int i = state->locals.size() - 1; i >= 0; i--) {
+        Local* local = &state->locals[i];
+        if (name.lexeme == local->name.lexeme) {
+            if (local->depth == -1) {
+                errorAt(name, "Cannot read local variable in its own initializer.");
+            }
+            return i;
+        }
+    }
+
+    return std::nullopt;
 }
 
 uint32_t Compiler::parseVariable(std::string errorMessage) {
     consume(TokenType::IDENTIFIER, errorMessage);
+
+    declareVariable();
+    if (state->scopeDepth > 0) return 0;
+
     return identifierConstant(&parser.previous);
 }
 
-void Compiler::defineVariable(uint32_t global) { emitGlobal(OpCode::DEF_GLOBAL, global); }
+void Compiler::markInitialized() {
+    if (state->scopeDepth == 0) return;
+
+    state->locals.back().depth = state->scopeDepth;
+}
+
+void Compiler::defineVariable(uint32_t global) {
+    if (state->scopeDepth > 0) {
+        markInitialized();
+        return;
+    }
+
+    emitVariable(OpCode::DEF_GLOBAL, global);
+}
+
+void Compiler::declareVariable() {
+    if (state->scopeDepth == 0) return;
+
+    Token* name = &parser.previous;
+
+    for (int i = state->locals.size() - 1; i >= 0; i--) {
+        Local* local = &state->locals[i];
+        if (local->depth != -1 && local->depth < state->scopeDepth) break;
+
+        if (name->lexeme == local->name.lexeme) {
+            errorAt(*name, "Already variable with this name in this scope.");
+        }
+    }
+
+    if (state->locals.size() >= UINT32_MAX) {
+        errorAt(parser.previous, "Too many local variables in function.");
+        return;
+    }
+
+    state->addLocal(*name);
+}
 
 void Compiler::namedVariable(Token name, bool canAssign) {
-    uint32_t arg = identifierConstant(&name);
+    OpCode getOp, setOp;
+    std::optional<uint32_t> arg = resolveLocal(name);
+
+    if (arg) {
+        getOp = OpCode::GET_LOCAL;
+        setOp = OpCode::SET_LOCAL;
+    } else {
+        arg = identifierConstant(&name);
+        getOp = OpCode::GET_GLOBAL;
+        setOp = OpCode::SET_GLOBAL;
+    }
 
     if (canAssign && match(TokenType::EQ)) {
         expression();
-        emitGlobal(OpCode::SET_GLOBAL, arg);
+        emitVariable(setOp, *arg);
     } else {
-        emitGlobal(OpCode::GET_GLOBAL, arg);
+        emitVariable(getOp, *arg);
     }
 }
 
@@ -225,6 +290,10 @@ void Compiler::printStatement() {
 void Compiler::statement() {
     if (match(TokenType::PRINT)) {
         printStatement();  // TODO: move to naitive function
+    } else if (match(TokenType::LBRACE)) {
+        beginScope();
+        block();
+        endScope();
     } else if (match(TokenType::RETURN)) {
         if (match(TokenType::SEMI)) {
             emitReturn();
@@ -249,7 +318,7 @@ void Compiler::declaration() {
 }
 
 void Compiler::varDeclaration() {
-    uint32_t global = parseVariable("Expected variable name.");
+    uint32_t var = parseVariable("Expected variable name.");
 
     if (match(TokenType::EQ)) {
         expression();
@@ -259,7 +328,28 @@ void Compiler::varDeclaration() {
 
     consume(TokenType::SEMI, "Expected ';' after variable declaration.");
 
-    defineVariable(global);
+    defineVariable(var);
+}
+
+void Compiler::block() {
+    while (parser.current.type != TokenType::RBRACE &&
+           parser.current.type != TokenType::EOF) {
+        declaration();
+    }
+
+    consume(TokenType::RBRACE, "Expected '}' after block.");
+}
+
+void Compiler::beginScope() { state->scopeDepth++; }
+
+void Compiler::endScope() {
+    state->scopeDepth--;
+
+    while (state->locals.size() > 0 &&
+           state->locals[state->locals.size() - 1].depth > state->scopeDepth) {
+        emitByte(OpCode::POP);
+        state->locals.pop_back();
+    }
 }
 
 void Compiler::panicSync() {
