@@ -1,6 +1,7 @@
 #include "Object.hpp"
 
 #include "VirtualMachine.hpp"
+#include "Value.hpp"
 
 
 bool Obj::operator==(const Obj& other) const {

@@ -1,8 +1,11 @@
 #ifndef SCANNER_HPP
 #define SCANNER_HPP
 
+#include <stdint.h>
+
 #include <optional>
 #include <string>
+#include <xstring>
 
 #include "Common.hpp"
 
@@ -23,8 +26,8 @@ private:
     char advance();
     bool match(char expected);
     [[nodiscard]] char peek(int distance) const;
-    [[nodiscard]] TokenType checkKeyword(uint32_t begin, uint32_t length, const std::string& rest,
-                           TokenType type) const;
+    [[nodiscard]] TokenType checkKeyword(uint32_t begin, uint32_t length,
+                                         const std::string& rest, TokenType type) const;
     [[nodiscard]] TokenType identifierType() const;
     std::optional<Token> skipWhitespace();
 

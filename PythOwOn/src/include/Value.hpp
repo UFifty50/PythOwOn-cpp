@@ -1,10 +1,15 @@
 #ifndef VALUE_HPP
 #define VALUE_HPP
 
+#include <corecrt_math.h>
+#include <float.h>
+
 #include <cmath>
 #include <ostream>
 #include <string>
+#include <utility>
 #include <vector>
+#include <xstring>
 
 #include "Common.hpp"
 #include "Object.hpp"
@@ -21,6 +26,7 @@ enum class ValueType {
 };
 
 struct Value;
+
 void printValue(Value value);
 
 #if defined(TRACE_EXECUTION) || defined(_DEBUG)

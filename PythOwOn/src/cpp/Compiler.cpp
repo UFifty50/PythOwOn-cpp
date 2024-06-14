@@ -2,8 +2,8 @@
 
 #include <functional>
 #include <ranges>
-
-#include "fmt/core.h"
+#include <string>
+#include <xutility>
 
 #include "Chunk.hpp"
 #include "Common.hpp"
@@ -255,7 +255,7 @@ uint32_t Compiler::identifierConstant(const Token* name) const {
 }
 
 std::optional<uint32_t> Compiler::resolveLocal(const Token& name) {
-    for (auto&& [index, local] : enumerate(state->locals)) {
+    for (auto&& [index, local] : enumerate(state->locals).reverse()) {
         if (name.lexeme == local.name.lexeme) {
             if (local.depth == -1) {
                 errorAt(name, "Cannot read local variable in its own initializer.");
@@ -441,6 +441,7 @@ void Compiler::switchStatement() {
             beginScope();
             while (parser.current.type != TokenType::CASE &&
                    parser.current.type != TokenType::DEFAULT &&
+                   parser.current.type != TokenType::RBRACE &&
                    parser.current.type != TokenType::EOF) {
                 declaration();
             }
@@ -551,22 +552,7 @@ void Compiler::continueStatement() {
     emitLoop(static_cast<uint16_t>(g_innermostLoopStart));
 }
 
-void Compiler::breakStatement() {
-    if (g_innermostLoopStart == -1) {
-        errorAt(parser.previous, "Cannot break outside of a loop.");
-    }
-
-    consume(TokenType::SEMI, "Expected ';' after break.");
-
-    for (auto& [_, localDepth] : state->locals | std::views::reverse) {
-        if (localDepth < g_innermostLoopScopeDepth) break;
-
-        emitByte(OpCode::POP);
-    }
-
-    // emitJump(OpCode::JUMP);
-    patchJump(g_innermostLoopStart);
-}
+void Compiler::breakStatement() {}  // TODO: implement me
 
 void Compiler::statement() {
     if (match(TokenType::PRINT)) {

@@ -1,9 +1,13 @@
 #ifndef OBJECT_HPP
 #define OBJECT_HPP
 
+#include <stdint.h>
 #include <ostream>
 #include <string>
 #include <tuple>
+#include <cstddef>
+#include <type_traits>
+#include <xstring>
 
 
 enum class ObjType {
@@ -12,6 +16,7 @@ enum class ObjType {
 };
 
 struct ObjString;
+
 struct Obj {
     ObjType type;
 

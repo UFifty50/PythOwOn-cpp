@@ -2,16 +2,16 @@
 #define ENUMERATE_HPP
 
 template <typename Iterable>
-class EnumerateObject {
+class EnumerateIterable {
     Iterable enumerationIterable;
-    std::size_t index;
+    size_t index;
     decltype(std::begin(enumerationIterable)) enumerationBegin;
     decltype(std::end(enumerationIterable)) enumerationEnd;
     bool isReversed;
     bool isFinished = false;
 
 public:
-    EnumerateObject(Iterable iter, const bool reversed = false)
+    EnumerateIterable(Iterable iter, const bool reversed = false)
         : enumerationIterable(iter),
           enumerationBegin(std::begin(iter)),
           enumerationEnd(std::end(iter)),
@@ -23,17 +23,14 @@ public:
             index = 0;
         }
     }
-    ~EnumerateObject() = default;
-    EnumerateObject(const EnumerateObject&) = delete;
-    EnumerateObject& operator=(const EnumerateObject&) = delete;
-    EnumerateObject(EnumerateObject&&) = delete;
-    EnumerateObject& operator=(EnumerateObject&&) = delete;
 
-    const EnumerateObject& begin() const { return *this; }
-    const EnumerateObject& end() const { return *this; }
+    const EnumerateIterable& begin() const {  // a
+        return *this;
+    }
+    const EnumerateIterable& end() const { return *this; }
 
-    bool operator!=(const EnumerateObject&) const {
-        return isReversed ? isFinished != true : enumerationBegin != enumerationEnd;
+    bool operator!=(const EnumerateIterable&) const {
+        return isReversed ? !isFinished : enumerationBegin != enumerationEnd;
     }
 
     void operator++() {
@@ -56,13 +53,13 @@ public:
         return {index, *enumerationBegin};
     }
 
-    EnumerateObject reverse() const {
-        return enumerate_object(enumerationIterable, !isReversed);
+    EnumerateIterable reverse() const {
+        return EnumerateIterable(enumerationIterable, !isReversed);
     }
 };
 
 template <typename Iterable>
-auto enumerate(Iterable&& iter) -> EnumerateObject<Iterable> {
+auto enumerate(Iterable&& iter) -> EnumerateIterable<Iterable> {
     return {std::forward<Iterable>(iter)};
 }
 

@@ -1,15 +1,22 @@
 #ifndef COMPILER_HPP
 #define COMPILER_HPP
 
+#include <stdint.h>
+
 #include <array>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
+#include <xstring>
 
 #include "Chunk.hpp"
+#include "Common.hpp"
 #include "Scanner.hpp"
 #include "Value.hpp"
+
+struct Value;
 
 
 enum class Precedence {

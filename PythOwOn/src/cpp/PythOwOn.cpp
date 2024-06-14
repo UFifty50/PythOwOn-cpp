@@ -99,7 +99,7 @@ bool isIncomplete(std::string& line) {
     int openBraces = 0;
     bool openTripleQuotes = false;
 
-    for (size_t i = 0; i < line.size() - 2; i++) {
+    for (ssize_t i = 0; i < static_cast<ssize_t>(line.size()) - 2; i++) {
         if (line[i] == '"' && line[i + 1] == '"' && line[i + 2] == '"') {
             openTripleQuotes = !openTripleQuotes;
             i += 2;
@@ -124,6 +124,12 @@ bool isIncomplete(std::string& line) {
     return openBrackets > 0 || openParentheses > 0 || openBraces > 0 || openTripleQuotes;
 }
 
+bool isEmpty(const std::string& line, const bool allowWhitespace = false) {
+    if (allowWhitespace) return line.empty();
+
+    return line.empty() || std::ranges::all_of(line, isspace);
+}
+
 uint8_t repl() {
     std::string line;
     std::string tmp;
@@ -133,15 +139,14 @@ uint8_t repl() {
         FMT_PRINT("PythOwOn <<< ");
 
         // TODO: Handle Multiline input
-        getline(std::cin, tmp);
-        line += tmp + '\n';
+        getline(std::cin, line);
         while (isIncomplete(line)) {
             FMT_PRINT("         ... ");
             getline(std::cin, tmp);
             line += tmp + '\n';
         }
 
-        g_compilationPipeline->interpret(line);
+        if (!isEmpty(line, false)) g_compilationPipeline->interpret(line);
         line = "";
     }
 }

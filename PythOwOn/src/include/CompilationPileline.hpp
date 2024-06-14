@@ -3,11 +3,15 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <xstring>
 
 #include "Chunk.hpp"
 #include "Common.hpp"
 #include "Compiler.hpp"
 #include "VirtualMachine.hpp"
+
+class Chunk;
 
 
 class CompilationPipeline {
