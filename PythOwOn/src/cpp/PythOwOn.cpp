@@ -1,14 +1,13 @@
 #include <cxxopts.hpp>
 
+#include <csignal>
 #include <fstream>
 #include <iostream>
 #include <ostream>
 #include <sstream>
 
-#include "Chunk.hpp"
 #include "Common.hpp"
 #include "CompilationPileline.hpp"
-#include "Value.hpp"
 #include "VirtualMachine.hpp"
 
 
@@ -16,9 +15,19 @@ uint8_t printVersion();
 uint8_t repl();
 uint8_t runFile(std::string path);
 uint8_t compileFile(std::string path, std::string outFile);
+void signalHandler(int sigNum);
+
+CompilationPipeline* g_compilationPipeline;
 
 
-int main(int argc, char** argv) {
+int main(const int argc, char** argv) {
+    (void)std::signal(SIGABRT, signalHandler);
+    (void)std::signal(SIGFPE, signalHandler);
+    (void)std::signal(SIGILL, signalHandler);
+    (void)std::signal(SIGINT, signalHandler);
+    (void)std::signal(SIGSEGV, signalHandler);
+    (void)std::signal(SIGTERM, signalHandler);
+
     cxxopts::Options options("PythOwOn", "A simple programming language.");
 
     options.add_option("", {"file", "", cxxopts::value<std::string>()});
@@ -33,10 +42,10 @@ int main(int argc, char** argv) {
 
     options.parse_positional({"file"});
 
-    auto result = options.parse(argc, argv);
+    const auto result = options.parse(argc, argv);
 
     if (result.count("help")) {
-        std::cout << options.help() << std::endl;
+        FMT_PRINTLN(options.help());
         return 0;
     }
 
@@ -45,7 +54,7 @@ int main(int argc, char** argv) {
 
     if (result.count("run")) {
         if (result.count("file") == 0) {
-            std::cout << "You must provide a file to run." << std::endl;
+            FMT_PRINTLN("You must provide a file to run.");
             return 1;
         }
 
@@ -54,12 +63,12 @@ int main(int argc, char** argv) {
 
     if (result.count("compile")) {
         if (result.count("file") == 0) {
-            std::cout << "You must provide a file to compile." << std::endl;
+            FMT_PRINTLN("You must provide a file to compile.");
             return 1;
         }
 
         if (result.count("output") == 0) {
-            std::cout << "You must provide a output file." << std::endl;
+            FMT_PRINTLN("You must provide a output file.");
             return 1;
         }
 
@@ -67,12 +76,20 @@ int main(int argc, char** argv) {
                            result["output"].as<std::string>());
     }
 
-    std::cout << options.help() << std::endl;
+    FMT_PRINTLN(options.help());
     return 0;
 }
 
+[[noreturn]] void signalHandler(int sigNum) {
+    FMT_PRINTLN("Recieved signal number {0}, exiting...", sigNum);
+
+    delete g_compilationPipeline;
+
+    std::quick_exit(sigNum);
+}
+
 uint8_t printVersion() {
-    std::cout << "PythOwOn 0.0.1" << std::endl;
+    FMT_PRINTLN("PythOwOn 0.0.1");
     return 0;
 }
 
@@ -90,10 +107,10 @@ bool isIncomplete(std::string& line) {
     }
     if (openTripleQuotes) return true;
 
-    for (auto it = line.begin(); it != line.end(); it++) {
+    for (auto it = line.begin(); it != line.end(); ++it) {
         if (*it == '#') break;
         if (*it == '"') {
-            while ((it + 1) != line.end() && *(it++) != '"') it++;
+            while (it + 1 != line.end() && *(it++) != '"') ++it;
             continue;
         }
         if (*it == '[') openBrackets++;
@@ -110,7 +127,7 @@ bool isIncomplete(std::string& line) {
 uint8_t repl() {
     std::string line;
     std::string tmp;
-    CompilationPileline* pipeline = new CompilationPileline();
+    g_compilationPipeline = new CompilationPipeline();
 
     while (true) {
         FMT_PRINT("PythOwOn <<< ");
@@ -124,18 +141,15 @@ uint8_t repl() {
             line += tmp + '\n';
         }
 
-        pipeline->interpret(line);
+        g_compilationPipeline->interpret(line);
         line = "";
     }
-
-    delete pipeline;
-    return 0;
 }
 
 uint8_t runFile(std::string path) {
-    std::ifstream file(path);
+    const std::ifstream file(path);
     if (!file.is_open()) {
-        FMT_PRINT("Could not open file \"{}\".\n", path);
+        FMT_PRINTLN("Could not open file \"{}\".", path);
         return 74;
     }
 
@@ -146,12 +160,12 @@ uint8_t runFile(std::string path) {
 
     std::stringstream ss;
     ss << file.rdbuf();
-    std::string source = ss.str();
+    const std::string source = ss.str();
 
-    CompilationPileline* pipeline = new CompilationPileline();
-    InterpretResult result = pipeline->interpret(source);
+    g_compilationPipeline = new CompilationPipeline();
+    const InterpretResult result = g_compilationPipeline->interpret(source);
 
-    delete pipeline;
+    delete g_compilationPipeline;
 
     if (result == InterpretResult::COMPILE_ERROR) return 65;
     if (result == InterpretResult::RUNTIME_ERROR) return 70;
@@ -174,30 +188,30 @@ uint8_t runFile(std::string path) {
     //}
 
 
-    // CompilationPileline* pipeline = new CompilationPileline();
+    // CompilationPipeline* pipeline = new CompilationPipeline();
 }
 
 uint8_t compileFile(std::string path, std::string outFile) {
     std::ifstream file(path);
     if (!file.is_open()) {
-        FMT_PRINT("Could not open file \"{}\".\n", path);
+        FMT_PRINTLN("Could not open file \"{}\".", path);
         return 74;
     }
 
-    std::string source((std::istreambuf_iterator<char>(file)),
+    std::string source((std::istreambuf_iterator(file)),
                        (std::istreambuf_iterator<char>()));
     file.close();
 
-    CompilationPileline* pipeline = new CompilationPileline();
-    auto [result, chunk] = pipeline->compile(source);
+    g_compilationPipeline = new CompilationPipeline();
+    auto [result, chunk] = g_compilationPipeline->compile(source);
 
-    delete pipeline;
+    delete g_compilationPipeline;
 
     if (result == InterpretResult::COMPILE_ERROR) return 65;
 
     std::ofstream out(outFile);
     if (!out.is_open()) {
-        FMT_PRINT("Could not open file \"{}\".\n", outFile);
+        FMT_PRINTLN("Could not open file \"{}\".", outFile);
         return 74;
     }
 

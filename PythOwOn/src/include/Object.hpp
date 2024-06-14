@@ -16,7 +16,9 @@ struct Obj {
     ObjType type;
 
     static ObjType typeOf(const Obj* obj) { return obj->type; }
-    ObjString* asString() const { return (ObjString*)this; }
+    [[nodiscard]] const ObjString* asString() const {
+        return reinterpret_cast<const ObjString*>(this);
+    }
 
     bool operator==(const Obj& other) const;
     std::ostream& operator<<(std::ostream& os) const;
@@ -27,14 +29,14 @@ struct ObjString {
     std::string str;
 
     static ObjString* create(const std::string& str);
-    static ObjString* create(const std::string& str, std::tuple<int, int> slice);
+    static ObjString* create(const std::string& str, std::tuple<int32_t, int32_t> slice);
 
     bool operator==(const ObjString& other) const;
 };
 
 template <>
 struct std::hash<ObjString> {
-    std::size_t operator()(const ObjString& string) const {
+    std::size_t operator()(const ObjString& string) const noexcept {
         return std::hash<std::string>()(string.str);
     }
 };

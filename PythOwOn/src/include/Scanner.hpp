@@ -10,7 +10,6 @@
 class Scanner {
 public:
     Scanner(std::string source);
-    ~Scanner();
 
     Token scanToken();
 
@@ -23,16 +22,15 @@ private:
 
     char advance();
     bool match(char expected);
-    bool isNext(char expected);
-    char peek(int distance);
-    TokenType checkKeyword(uint32_t begin, uint32_t length, std::string rest,
-                           TokenType type);
-    TokenType identifierType();
+    [[nodiscard]] char peek(int distance) const;
+    [[nodiscard]] TokenType checkKeyword(uint32_t begin, uint32_t length, const std::string& rest,
+                           TokenType type) const;
+    [[nodiscard]] TokenType identifierType() const;
     std::optional<Token> skipWhitespace();
 
-    Token makeToken(TokenType type);
-    Token makeToken(TokenType type, std::string token);
-    Token errorToken(std::string message);
+    [[nodiscard]] Token makeToken(TokenType type) const;
+    [[nodiscard]] Token makeToken(TokenType type, const std::string& token) const;
+    [[nodiscard]] Token errorToken(const std::string& message) const;
 
     Token string();
     Token multiString();

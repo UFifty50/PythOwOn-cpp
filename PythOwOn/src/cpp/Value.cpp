@@ -3,11 +3,14 @@
 #include "Common.hpp"
 
 
-void printObject(Value value) {
+void printObject(const Value value) {
     switch (Obj::typeOf(value.as.obj)) {
         case ObjType::STRING:
-            ObjString* string = (ObjString*)value.as.obj;
-            FMT_PRINT("\"{}\"", string->str);
+            FMT_PRINT("\"{}\"", Value::toObjString(value)->str);
+            break;
+
+        case ObjType::NONE:
+            FMT_PRINT("None");
             break;
     }
 }
@@ -28,7 +31,7 @@ void printValue(Value value) {
 #if defined(TRACE_EXECUTION) || defined(_DEBUG)
 std::string unEscape(const std::string& str) {
     std::string result;
-    for (char c : str) {
+    for (const char c : str) {
         switch (c) {
             case '\"':
                 result += '"';
@@ -70,11 +73,14 @@ std::string unEscape(const std::string& str) {
     return result;
 }
 
-void Debug_printObject(Value value) {
+void Debug_printObject(const Value value) {
     switch (Obj::typeOf(value.as.obj)) {
         case ObjType::STRING:
-            ObjString* string = (ObjString*)value.as.obj;
-            FMT_PRINT("\"{}\"", unEscape(string->str));
+            FMT_PRINT("\"{}\"", unEscape(Value::toObjString(value)->str));
+            break;
+
+        case ObjType::NONE:
+            FMT_PRINT("None");
             break;
     }
 }

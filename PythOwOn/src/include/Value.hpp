@@ -37,88 +37,123 @@ struct Value {
         Obj* obj;
     } as;
 
-    static Value noneVal() { return {ValueType::NONE, {.obj = 0}}; }
+    static Value noneVal() { return {ValueType::NONE, {.obj = nullptr}}; }
 
-    static Value boolVal(bool value) { return {ValueType::BOOL, {.boolean = value}}; }
+    static Value boolVal(const bool value) {
+        return {ValueType::BOOL, {.boolean = value}};
+    }
 
-    static Value integerVal(ssize_t value) {
+    static Value integerVal(const ssize_t value) {
         return {ValueType::INT, {.integer = value}};
     }
 
-    static Value doubleVal(double value) {
+    static Value doubleVal(const double value) {
         return {ValueType::DOUBLE, {.decimal = value}};
     }
 
-    static Value numberVal(double value, bool isDouble) {
-        return isDouble ? doubleVal(value) : integerVal((ssize_t)value);
+    static Value numberVal(const double value, const bool isDouble) {
+        return isDouble ? doubleVal(value) : integerVal(static_cast<ssize_t>(value));
     }
 
-    static Value infinity(bool positive) {
+    static Value infinity(const bool positive) {
         return {ValueType::INFINITY, {.boolean = positive}};
     }
 
-    static Value nan(bool positive) { return {ValueType::NAN, {.boolean = positive}}; }
-
-    template <typename T>
-    static Value objectVal(T object) {
-        return {ValueType::OBJECT, {.obj = (Obj*)object}};
+    static Value nan(const bool positive) {
+        return {ValueType::NAN, {.boolean = positive}};
     }
 
-    template <>
-    static Value objectVal(Value value) {
+    template <typename T>
+    static Value objectVal(const T value) {
+        return {ValueType::OBJECT,
+                {.obj = const_cast<Obj*>(reinterpret_cast<const Obj*>(value))}};
+    }
+
+    static Value objectVal(const Value value) {
         if (value.isObject()) return value;
         return {ValueType::OBJECT, {.obj = value.as.obj}};
     }
 
 
-    static Value asBool(Value value) {
-        return value.isFalsey() ? Value::boolVal(false) : Value::boolVal(true);
+    static Value asBool(const Value value) {
+        return value.isFalsey() ? boolVal(false) : boolVal(true);
     }
 
-    static Value asInteger(Value value) {
+    static Value asInteger(const Value value) {
         if (value.isInteger()) return value;
-        if (value.isDouble()) return Value::integerVal((ssize_t)value.as.decimal);
-        if (value.isBool()) return Value::integerVal(value.as.boolean ? 1 : 0);
-        return Value::noneVal();
+        if (value.isDouble()) return integerVal(static_cast<ssize_t>(value.as.decimal));
+        if (value.isBool()) return integerVal(value.as.boolean ? 1 : 0);
+        return noneVal();
     }
 
-    static Value asDouble(Value value) {
+    static Value asDouble(const Value value) {
         if (value.isDouble()) return value;
-        if (value.isInteger()) return Value::doubleVal((double)value.as.integer);
-        if (value.isBool()) return Value::doubleVal(value.as.boolean ? 1 : 0);
-        return Value::noneVal();
+        if (value.isInteger()) return doubleVal(static_cast<double>(value.as.integer));
+        if (value.isBool()) return doubleVal(value.as.boolean ? 1 : 0);
+        return noneVal();
     }
 
-    static Value asNumber(Value value) {
+    static Value asNumber(const Value value) {
         if (value.isDouble() || value.isInteger()) return value;
-        if (value.isBool()) return Value::integerVal(value.as.boolean ? 1 : 0);
-        return Value::noneVal();
+        if (value.isBool()) return integerVal(value.as.boolean ? 1 : 0);
+        return noneVal();
     }
 
-    static Obj* asObject(Value value) { return value.as.obj; }
+    static Obj* asObject(const Value value) { return value.as.obj; }
 
+    static const ObjString* toObjString(const Value value) {
+        switch (value.type) {
+            case ValueType::OBJECT:
+                return Obj::typeOf(value.as.obj) == ObjType::STRING
+                           ? value.as.obj->asString()
+                           : ObjString::create("<Unprintable Object Type>");
+            case ValueType::INT:
+                return ObjString::create(std::to_string(value.as.integer));
+            case ValueType::DOUBLE:
+                return ObjString::create(std::to_string(value.as.decimal));
+            case ValueType::BOOL:
+                return ObjString::create(value.as.boolean ? "true" : "false");
+            case ValueType::INFINITY:
+                return ObjString::create(value.as.boolean ? "inf" : "-inf");
+            case ValueType::NAN:
+                return ObjString::create(value.as.boolean ? "nan" : "-nan");
+            case ValueType::NONE:
+                return ObjString::create("None");
+        }
 
-    bool isNone() const { return type == ValueType::NONE; }
-    bool isBool() const { return type == ValueType::BOOL; }
-    bool isInteger() const { return type == ValueType::INT; }
-    bool isDouble() const { return type == ValueType::DOUBLE; }
-    bool isInf() const { return type == ValueType::INFINITY; }
-    bool isNaN() const { return type == ValueType::NAN; }
-    bool isNumber() const { return isInteger() || isDouble(); }
-    bool isSpecialNumber() const { return isInf() || isNaN(); }
-    bool isObject() const { return type == ValueType::OBJECT; }
+        // Unreachable
+        return nullptr;
+    }
 
-    bool isObjectType(ObjType type) { return isObject() && Obj::typeOf(as.obj) == type; }
+    static Obj* toObjStringObj(const Value value) {
+        const Value objStringValue = objectVal(toObjString(value));
+        return asObject(objStringValue);
+    }
 
-    bool isFalsey() {
+    [[nodiscard]] bool isNone() const { return type == ValueType::NONE; }
+    [[nodiscard]] bool isBool() const { return type == ValueType::BOOL; }
+    [[nodiscard]] bool isInteger() const { return type == ValueType::INT; }
+    [[nodiscard]] bool isDouble() const { return type == ValueType::DOUBLE; }
+    [[nodiscard]] bool isInf() const { return type == ValueType::INFINITY; }
+    [[nodiscard]] bool isNaN() const { return type == ValueType::NAN; }
+    [[nodiscard]] bool isNumber() const { return isInteger() || isDouble(); }
+    [[nodiscard]] bool isSpecialNumber() const { return isInf() || isNaN(); }
+    [[nodiscard]] bool isObject() const { return type == ValueType::OBJECT; }
+
+    [[nodiscard]] bool isObjectType(const ObjType objectType) const {
+        return isObject() && Obj::typeOf(as.obj) == objectType;
+    }
+
+    [[nodiscard]] bool isFalsey() const {
         return isNone() || (isBool() && !as.boolean) ||
-               (isObjectType(ObjType::STRING) && as.obj->asString()->str == "");
+               (isObjectType(ObjType::STRING) && as.obj->asString()->str.empty());
     }
 
-    bool isEqualTo(const Value other) const {
+    [[nodiscard]] bool isEqualTo(const Value other) const {
         if ((type == ValueType::DOUBLE && other.type == ValueType::INT) ||
             (type == ValueType::INT && other.type == ValueType::DOUBLE)) {
-            return Value::asDouble(*this).as.decimal == Value::asDouble(other).as.decimal;
+            return ProxEqual<double>(asDouble(*this).as.decimal, other.as.decimal,
+                                     DBL_EPSILON);
         }
 
         if (type != other.type) return false;
@@ -132,29 +167,31 @@ struct Value {
             case ValueType::INT:
                 return as.integer == other.as.integer;
             case ValueType::DOUBLE:
-                return as.decimal == other.as.decimal;
-            case ValueType::OBJECT: {
+                return ProxEqual<double>(as.decimal, other.as.decimal, DBL_EPSILON);
+            case ValueType::OBJECT:
                 return as.obj == other.as.obj;
-            }
-
-            default:
+            case ValueType::NAN:
                 return false;
         }
+
+        // Unreachable
+        return false;
     }
 
     static Value addObjects(const Obj* a, const Obj* b) {
-        if (Obj::typeOf(a) != Obj::typeOf(b)) return Value::noneVal();
+        if (Obj::typeOf(a) != Obj::typeOf(b)) return noneVal();
 
         switch (Obj::typeOf(a)) {
-            case ObjType::STRING: {
-                ObjString* stringA = a->asString();
-                ObjString* stringB = b->asString();
-                return Value::objectVal(ObjString::create(stringA->str + stringB->str));
-            }
+            case ObjType::STRING:
+                return objectVal(
+                    ObjString::create(a->asString()->str + b->asString()->str));
 
-            default:
-                return Value::noneVal();
+            case ObjType::NONE:
+                return noneVal();
         }
+
+        // Unreachable
+        return noneVal();
     }
 
 
@@ -162,125 +199,195 @@ struct Value {
     static Value multiplyObjects(const A a, const B b) {
         if constexpr (std::is_same_v<A, Obj*> && std::is_same_v<B, Value>) {
             if (b.isNumber()) {
-                std::string str = "";
+                std::string str;
                 for (ssize_t i = 0; i < asInteger(b).as.integer; i++)
                     str += a->asString()->str;
-                return Value::objectVal(ObjString::create(str));
+                return objectVal(ObjString::create(str));
             }
         } else if constexpr (std::is_same_v<A, Value> && std::is_same_v<B, Obj*>) {
             if (a.isNumber()) {
-                std::string str = "";
+                std::string str;
                 for (ssize_t i = 0; i < asInteger(a).as.integer; i++)
                     str += b->asString()->str;
-                return Value::objectVal(ObjString::create(str));
+                return objectVal(ObjString::create(str));
             }
         }
 
-        return Value::noneVal();
+        return noneVal();
     }
 
     Value operator/(const Value other) const {
-        if ((this->isNumber() && asDouble(*this).as.decimal == 0) &&
-            (other.isNumber() && asDouble(other).as.decimal == 0))
-            return Value::nan(false);
+        if (this->isNumber() && ProxEqual<double>(asDouble(*this).as.decimal, 0) &&
+            (other.isNumber() && ProxEqual<double>(asDouble(other).as.decimal, 0)))
+            return nan(false);
 
-        if (other.isNumber() && asDouble(other).as.decimal == 0)
-            return Value::infinity(asDouble(*this).as.decimal > 0);
+        if (other.isNumber() && ProxEqual<double>(asDouble(other).as.decimal, 0))
+            return infinity(asDouble(*this).as.decimal > 0);
 
-        return Value::doubleVal(Value::asDouble(*this).as.decimal /
-                                Value::asDouble(other).as.decimal);
+        return doubleVal(asDouble(*this).as.decimal / asDouble(other).as.decimal);
     }
 
     Value operator*(const Value other) const {
-        if (this->isObject() && other.isNumber()) {
-            return multiplyObjects(Value::asObject(*this), Value::asNumber(other));
-        } else if (this->isNumber() && other.isObject()) {
-            return multiplyObjects(Value::asNumber(*this), Value::asObject(other));
-        }
+        if (this->isObject() && other.isNumber())
+            return multiplyObjects(asObject(*this), asNumber(other));
 
-        if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE) {
-            return Value::doubleVal(Value::asDouble(*this).as.decimal *
-                                    Value::asDouble(other).as.decimal);
-        } else {
-            return Value::integerVal(this->as.integer * other.as.integer);
-        }
+
+        if (this->isNumber() && other.isObject())
+            return multiplyObjects(asNumber(*this), asObject(other));
+
+
+        if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
+            return doubleVal(asDouble(*this).as.decimal * asDouble(other).as.decimal);
+
+
+        return integerVal(this->as.integer * other.as.integer);
     }
 
     Value operator+(const Value other) const {
-        if (this->type == ValueType::OBJECT || other.type == ValueType::OBJECT) {
-            return addObjects(Value::asObject(*this), Value::asObject(other));
-        } else if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE) {
-            return Value::doubleVal(Value::asDouble(*this).as.decimal + other.as.decimal);
-        } else {
-            return Value::integerVal(Value::asInteger(*this).as.integer +
-                                     other.as.integer);
+        switch (this->type) {
+            case ValueType::OBJECT:
+                switch (other.type) {
+                    case ValueType::OBJECT:
+                        return addObjects(asObject(*this), asObject(other));
+
+                    case ValueType::INT:
+                    case ValueType::DOUBLE:
+                    case ValueType::BOOL:
+                    case ValueType::INFINITY:
+                    case ValueType::NAN:
+                    case ValueType::NONE:
+                        return addObjects(asObject(*this), toObjStringObj(other));
+                }
+                break;
+
+            case ValueType::DOUBLE:
+                switch (other.type) {
+                    case ValueType::DOUBLE:
+                        return doubleVal(this->as.decimal + other.as.decimal);
+                    case ValueType::INT:
+                        return doubleVal(this->as.decimal + asDouble(other).as.decimal);
+                    case ValueType::OBJECT:
+                        return addObjects(toObjStringObj(*this), asObject(other));
+                    case ValueType::INFINITY:
+                        return infinity(this->as.boolean);
+                    case ValueType::NAN:
+                        return nan(this->as.boolean);
+                    case ValueType::BOOL:
+                        return doubleVal(this->as.decimal + other.as.boolean);
+                    case ValueType::NONE:
+                        return noneVal();
+                }
+                break;
+
+            case ValueType::INT:
+                switch (other.type) {
+                    case ValueType::INT:
+                        return integerVal(this->as.integer + other.as.integer);
+                    case ValueType::DOUBLE:
+                        return doubleVal(asDouble(*this).as.decimal + other.as.decimal);
+                    case ValueType::OBJECT:
+                        return addObjects(toObjStringObj(*this), asObject(other));
+                    case ValueType::INFINITY:
+                        return infinity(this->as.boolean);
+                    case ValueType::NAN:
+                        return nan(this->as.boolean);
+                    case ValueType::BOOL:
+                        return integerVal(this->as.integer + other.as.boolean);
+                    case ValueType::NONE:
+                        return noneVal();
+                }
+                break;
+
+            case ValueType::INFINITY:
+                return infinity(this->as.boolean);
+
+            case ValueType::NAN:
+                return nan(this->as.boolean);
+
+            case ValueType::BOOL:
+                switch (other.type) {
+                    case ValueType::BOOL:
+                        return boolVal(this->as.boolean || other.as.boolean);
+                    case ValueType::INT:
+                        return integerVal(this->as.boolean + other.as.integer);
+                    case ValueType::DOUBLE:
+                        return doubleVal(this->as.boolean + other.as.decimal);
+                    case ValueType::OBJECT:
+                        return addObjects(toObjStringObj(*this), asObject(other));
+                    case ValueType::INFINITY:
+                        return infinity(this->as.boolean);
+                    case ValueType::NAN:
+                        return nan(this->as.boolean);
+                    case ValueType::NONE:
+                        return noneVal();
+                }
+                break;
+
+            case ValueType::NONE:
+                return noneVal();
         }
+
+        // Unreachable
+        return noneVal();
     }
 
     Value operator%(const Value other) const {
-        return Value::doubleVal(
-            fmod(Value::asDouble(*this).as.decimal, other.as.decimal));
+        return doubleVal(fmod(asDouble(*this).as.decimal, asDouble(other).as.decimal));
     }
 
-    inline Value operator==(const Value other) const { Value::boolVal(isEqualTo(other)); }
+    Value operator==(const Value other) const { return boolVal(isEqualTo(other)); }
 
-    inline Value operator!=(const Value other) const {
-        Value::boolVal(!isEqualTo(other));
-    }
+    Value operator!=(const Value other) const { return boolVal(!isEqualTo(other)); }
 
-    bool operator>(Value other) const {
+    bool operator>(const Value other) const {
         if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
-            return Value::asDouble(*this).as.decimal > Value::asDouble(other).as.decimal;
+            return asDouble(*this).as.decimal > asDouble(other).as.decimal;
         else if (this->type == ValueType::INT && other.type == ValueType::INT)
-            return Value::asInteger(*this).as.integer >
-                   Value::asInteger(other).as.integer;
+            return asInteger(*this).as.integer > asInteger(other).as.integer;
         else
             return false;
     }
 
-    bool operator<(Value other) const {
+    bool operator<(const Value other) const {
         if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
-            return Value::asDouble(*this).as.decimal < Value::asDouble(other).as.decimal;
+            return asDouble(*this).as.decimal < asDouble(other).as.decimal;
 
         else if (this->type == ValueType::INT && other.type == ValueType::INT)
-            return Value::asInteger(*this).as.integer <
-                   Value::asInteger(other).as.integer;
+            return asInteger(*this).as.integer < asInteger(other).as.integer;
         else
             return false;
     }
 
-    bool operator>=(Value other) const {
+    bool operator>=(const Value other) const {
         if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
-            return Value::asDouble(*this).as.decimal >= Value::asDouble(other).as.decimal;
+            return asDouble(*this).as.decimal >= asDouble(other).as.decimal;
         else if (this->type == ValueType::INT && other.type == ValueType::INT)
-            return Value::asInteger(*this).as.integer >=
-                   Value::asInteger(other).as.integer;
+            return asInteger(*this).as.integer >= asInteger(other).as.integer;
         else
             return false;
     }
 
-    bool operator<=(Value other) const {
+    bool operator<=(const Value other) const {
         if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
-            return Value::asDouble(*this).as.decimal <= Value::asDouble(other).as.decimal;
+            return asDouble(*this).as.decimal <= asDouble(other).as.decimal;
         else if (this->type == ValueType::INT && other.type == ValueType::INT)
-            return Value::asInteger(*this).as.integer <=
-                   Value::asInteger(other).as.integer;
+            return asInteger(*this).as.integer <= asInteger(other).as.integer;
         else
             return false;
     }
 
-    Value operator<<(Value other) const {
+    Value operator<<(const Value other) const {
         if (other.type == ValueType::INT && type == ValueType::INT)
-            return Value::integerVal(as.integer << other.as.integer);
+            return integerVal(as.integer << other.as.integer);
 
-        return Value::noneVal();
+        return noneVal();
     }
 
-    Value operator>>(Value other) const {
+    Value operator>>(const Value other) const {
         if (other.type == ValueType::INT && type == ValueType::INT)
-            return Value::integerVal(as.integer >> other.as.integer);
+            return integerVal(as.integer >> other.as.integer);
 
-        return Value::noneVal();
+        return noneVal();
     }
 
     std::ostream& operator<<(std::ostream& os) const {

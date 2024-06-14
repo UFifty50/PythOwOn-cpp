@@ -6,13 +6,13 @@
 #include "Common.hpp"
 
 #define AT_END (current >= source.length())
-#define IS_DIGIT(c) (c >= '0' && c <= '9')
-#define IS_ALPHA(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
+#define IS_DIGIT(c) ((c) >= '0' && (c) <= '9')
+#define IS_ALPHA(c) \
+    (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_')
 
 
-Scanner::Scanner(std::string source) : source(source), start(0), current(0), line(1) {}
-
-Scanner::~Scanner() = default;
+Scanner::Scanner(std::string source)
+    : source(std::move(source)), start(0), current(0), line(1) {}
 
 
 char Scanner::advance() {
@@ -20,21 +20,21 @@ char Scanner::advance() {
     return source[current - 1];
 }
 
-bool Scanner::match(char expected) {
+bool Scanner::match(const char expected) {
     if (AT_END) return false;
     if (peek(0) != expected) return false;
     current++;
     return true;
 }
 
-char Scanner::peek(int distance) {
+char Scanner::peek(const int distance) const {
     if (current + distance >= source.length()) return '\0';
     return source[current + distance];
 }
 
-TokenType Scanner::checkKeyword(uint32_t begin, uint32_t length, std::string rest,
-                                TokenType type) {
-    if ((current - start) == (begin + length) &&
+TokenType Scanner::checkKeyword(const uint32_t begin, const uint32_t length,
+                                const std::string& rest, const TokenType type) const {
+    if (current - start == begin + length &&
         source.substr(start + begin, length) == rest) {
         return type;
     }
@@ -42,14 +42,14 @@ TokenType Scanner::checkKeyword(uint32_t begin, uint32_t length, std::string res
     return TokenType::IDENTIFIER;
 }
 
-TokenType Scanner::identifierType() {
+TokenType Scanner::identifierType() const {
     switch (source[start]) {
         case 'a':
             return checkKeyword(1, 2, "nd", TokenType::AND);
         case 'b':
             return checkKeyword(1, 4, "reak", TokenType::BREAK);
         case 'c':
-            if ((current - start) > 1) {
+            if (current - start > 1) {
                 switch (source[start + 1]) {
                     case 'l':
                         return checkKeyword(2, 3, "ass", TokenType::CLASS);
@@ -66,7 +66,7 @@ TokenType Scanner::identifierType() {
         case 'd':
             return checkKeyword(1, 6, "efault", TokenType::DEFAULT);
         case 'e':
-            if ((current - start) > 1) {
+            if (current - start > 1) {
                 switch (source[start + 1]) {
                     case 'l':
                         return checkKeyword(2, 2, "se", TokenType::ELSE);
@@ -79,7 +79,7 @@ TokenType Scanner::identifierType() {
             break;
 
         case 'f':
-            if ((current - start) > 1) {
+            if (current - start > 1) {
                 switch (source[start + 1]) {
                     case 'a':
                         return checkKeyword(2, 3, "lse", TokenType::FALSE);
@@ -94,7 +94,7 @@ TokenType Scanner::identifierType() {
             break;
 
         case 'i':
-            if ((current - start) > 2) {
+            if (current - start > 2) {
                 switch (source[start + 1]) {
                     case 'n':
                         return checkKeyword(2, 1, "f", TokenType::INF);
@@ -108,7 +108,7 @@ TokenType Scanner::identifierType() {
             return checkKeyword(1, 2, "et", TokenType::LET);
 
         case 'n':  // can be none, not or nan
-            if ((current - start) > 2) {
+            if (current - start > 2) {
                 switch (source[start + 1]) {
                     case 'a':
                         return checkKeyword(2, 1, "n", TokenType::NAN);
@@ -122,6 +122,8 @@ TokenType Scanner::identifierType() {
                             default:
                                 break;
                         }
+                        break;
+
                     default:
                         break;
                 }
@@ -136,7 +138,7 @@ TokenType Scanner::identifierType() {
         case 'r':
             return checkKeyword(1, 5, "eturn", TokenType::RETURN);
         case 's':
-            if ((current - start) > 1) {
+            if (current - start > 1) {
                 switch (source[start + 1]) {
                     case 'u':
                         return checkKeyword(2, 3, "per", TokenType::SUPER);
@@ -149,7 +151,7 @@ TokenType Scanner::identifierType() {
             break;
 
         case 't':
-            if ((current - start) > 1) {
+            if (current - start > 1) {
                 switch (source[start + 1]) {
                     case 'h':
                         return checkKeyword(2, 2, "is", TokenType::THIS);
@@ -172,7 +174,7 @@ TokenType Scanner::identifierType() {
 }
 
 // clang-format off
-char escapeSequence(char identifier) {
+char escapeSequence(const char identifier) {
     switch (identifier) {
         case '"':  return '"'; 
         case '\'': return '\'';
@@ -185,13 +187,13 @@ char escapeSequence(char identifier) {
         case '0':  return '\0';
         case 'a':  return '\a';
         default:
-            return (char)-1;
+            return -1;
     }
 }
 // clang-format on
 
 Token Scanner::string() {
-    std::string str = "";
+    std::string str;
 
     while (true) {
         char c = advance();
@@ -213,7 +215,7 @@ Token Scanner::string() {
 }
 
 Token Scanner::multiString() {
-    std::string str = "";
+    std::string str;
     advance();
     advance();
 
@@ -263,8 +265,7 @@ Token Scanner::identifier() {
 
 std::optional<Token> Scanner::skipWhitespace() {
     while (true) {
-        char c = peek(0);
-        switch (c) {
+        switch (peek(0)) {
             case ' ':
             case '\r':
             case '\t':
@@ -336,6 +337,10 @@ Token Scanner::scanToken() {
             return makeToken(TokenType::SLASH);
         case '*':
             return makeToken(TokenType::STAR);
+        case ':':
+            return makeToken(TokenType::COLON);
+        case '%':
+            return makeToken(TokenType::PERCENT);
 
         case '!':
             return makeToken(match('=') ? TokenType::BANG_EQ : TokenType::BANG);
@@ -344,13 +349,13 @@ Token Scanner::scanToken() {
             return makeToken(match('=') ? TokenType::EQ_EQ : TokenType::EQ);
 
         case '>':
-            return makeToken(match('=')
-                                 ? TokenType::GREATER_EQ
-                                 : (match('>') ? TokenType::RSHIFT : TokenType::GREATER));
+            return makeToken(match('=')   ? TokenType::GREATER_EQ
+                             : match('>') ? TokenType::RSHIFT
+                                          : TokenType::GREATER);
         case '<':
-            return makeToken(match('=')
-                                 ? TokenType::LESS_EQ
-                                 : (match('<') ? TokenType::LSHIFT : TokenType::LESS));
+            return makeToken(match('=')   ? TokenType::LESS_EQ
+                             : match('<') ? TokenType::LSHIFT
+                                          : TokenType::LESS);
 
         case '"':
             return (peek(0) == '"' && peek(1) == '"') ? multiString() : string();
@@ -360,14 +365,14 @@ Token Scanner::scanToken() {
     }
 }
 
-Token Scanner::makeToken(TokenType type) {
+Token Scanner::makeToken(const TokenType type) const {
     return Token{type, source.substr(start, current - start), line};
 }
 
-Token Scanner::makeToken(TokenType type, std::string token) {
+Token Scanner::makeToken(const TokenType type, const std::string& token) const {
     return Token{type, token, line};
 }
 
-Token Scanner::errorToken(std::string message) {
+Token Scanner::errorToken(const std::string& message) const {
     return Token{TokenType::ERROR, message, line};
 }

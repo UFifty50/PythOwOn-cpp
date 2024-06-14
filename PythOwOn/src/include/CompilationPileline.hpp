@@ -1,5 +1,5 @@
-#ifndef COMPILEPIPE_HPP
-#define COMPILEPIPE_HPP
+#ifndef COMPILATIONPIPELINE_HPP
+#define COMPILATIONPIPELINE_HPP
 
 #include <memory>
 #include <string>
@@ -10,15 +10,13 @@
 #include "VirtualMachine.hpp"
 
 
-class CompilationPileline {
+class CompilationPipeline {
 public:
-    CompilationPileline() : vm(std::make_unique<VM>()) {}
+    CompilationPipeline() : vm(std::make_unique<VM>()) {}
 
-    ~CompilationPileline() = default;
-
-    InterpretResult interpret(std::string source);
-    std::pair<InterpretResult, std::shared_ptr<Chunk>> compile(std::string source);
-    InterpretResult runCompiled(std::shared_ptr<Chunk> chunk);
+    InterpretResult interpret(const std::string& source);
+    std::pair<InterpretResult, std::shared_ptr<Chunk>> compile(const std::string& source);
+    [[nodiscard]] InterpretResult runCompiled(const std::shared_ptr<Chunk>& chunk) const;
 
 private:
     std::unique_ptr<Compiler> compiler;

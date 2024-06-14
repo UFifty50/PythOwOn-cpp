@@ -5,13 +5,13 @@
 
 
 template <typename T>
-class Stack : private std::vector<T> {
+class Stack : std::vector<T> {
 public:
-    inline T peek(uint32_t distance) const {
+    [[nodiscard]] T peek(uint32_t distance) const {
         return this->at(this->size() - 1 - distance);
     }
 
-    inline T pop() {
+    T pop() {
         T value = peek(0);
         this->pop_back();
         return value;
@@ -23,6 +23,7 @@ public:
     using std::vector<T>::operator[];
 
     using std::vector<T>::size;
+    using std::vector<T>::empty;
     using std::vector<T>::begin;
     using std::vector<T>::end;
 };
