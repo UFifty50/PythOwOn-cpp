@@ -5,7 +5,7 @@ number of constants    {4 bytes}
 number of strings      {4 bytes}
 
 === Body ===
-line indices (sizeof(uint32_t) * number of line indices)
 constants (variable size)
+line indices (sizeof(uint32_t) * number of line indices)
 strings (variable size)
 code (rest of the file)

@@ -294,7 +294,22 @@ uint8_t runFile(std::string path) {
 }
 
 std::ostream& operator<<(std::ostream& os, const std::vector<Value>& value) {
-    
+    std::vector<std::string> strTable;
+    std::vector<const char*> valueBytes;
+
+    // first pass
+    for (auto& val : value) { valueBytes.push_back(ValueToBytes(val, strTable)); }
+
+    os.write(LEtoBEStr<uint32_t>(static_cast<uint32_t>(strTable.size())),
+             sizeof(uint32_t));
+
+    for (const char* val : valueBytes) os << val;
+
+    for (const auto& str : strTable) {
+        os.write(LEtoBEStr<uint32_t>(static_cast<uint32_t>(str.size())),
+                 sizeof(uint32_t));
+        os.write(str.data(), str.size());
+    }
 }
 
 uint8_t compileFile(std::string path, std::string outFile) {
@@ -327,8 +342,8 @@ uint8_t compileFile(std::string path, std::string outFile) {
     out << "POWON\0\0"s;
     out.write(LEtoBEStr<uint32_t>(linesSize), sizeof(uint32_t));
     out.write(LEtoBEStr<uint32_t>(constantsSize), sizeof(uint32_t));
+    out << chunk->constants; // includes string table
     out << chunk->lines;
-    out << chunk->constants;
     out << chunk->code;
     out.flush();
     out.close();
