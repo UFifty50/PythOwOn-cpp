@@ -21,7 +21,7 @@ struct ObjString;
 struct Obj {
     ObjType type;
 
-    static ObjType typeOf(const Obj* obj) { return obj->type; }
+    static ObjType TypeOf(const Obj* obj) { return obj->type; }
 
     [[nodiscard]] const ObjString* asString() const {
         return reinterpret_cast<const ObjString*>(this);
@@ -35,8 +35,8 @@ struct ObjString {
     Obj object;
     std::string str;
 
-    static const ObjString* create(const std::string& str);
-    static const ObjString* create(const std::string& str,
+    static const ObjString* Create(const std::string& newStr);
+    static const ObjString* Create(const std::string& newStr,
                                    std::tuple<int32_t, int32_t> slice);
 
     bool operator==(const ObjString& other) const;

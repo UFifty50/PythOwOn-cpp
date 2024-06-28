@@ -8,12 +8,10 @@ bool Obj::operator==(const Obj& other) const {
     if (type != other.type) return false;
 
     switch (other.type) {
-        case ObjType::STRING:
-            return asString()->str == other.asString()->str;
+        case ObjType::STRING: return asString()->str == other.asString()->str;
 
         case ObjType::NONE:
-        default:
-            return false;
+        default: return false;
     }
 }
 
@@ -22,27 +20,24 @@ bool ObjString::operator==(const ObjString& other) const { return str == other.s
 
 std::ostream& Obj::operator<<(std::ostream& os) const {
     switch (type) {
-        case ObjType::STRING:
-            return os << asString()->str;
+        case ObjType::STRING: return os << asString()->str;
 
         case ObjType::NONE:
-        default:
-            return os << std::string("None");
+        default: return os << std::string("None");
     }
 }
 
 
-const ObjString* ObjString::create(const std::string& str) {
-    if (VM::hasString(str)) return VM::getString(str);
+const ObjString* ObjString::Create(const std::string& newStr) {
+    if (VM::hasString(newStr)) return VM::getString(newStr);
 
     auto* string = VM::newObject<ObjString>(ObjType::STRING);
-    string->object.type = ObjType::STRING;
-    string->str = str;
+    string->str = newStr;
     VM::addString(string);
     return string;
 }
 
-const ObjString* ObjString::create(const std::string& newStr,
+const ObjString* ObjString::Create(const std::string& newStr,
                                    std::tuple<int32_t, int32_t> slice) {
     if (std::get<0>(slice) < 0)
         std::get<0>(slice) =
@@ -51,5 +46,5 @@ const ObjString* ObjString::create(const std::string& newStr,
         std::get<1>(slice) =
             static_cast<signed>(newStr.size()) + std::get<1>(slice) - 1;
 
-    return create(newStr.substr(std::get<0>(slice), std::get<1>(slice)));
+    return Create(newStr.substr(std::get<0>(slice), std::get<1>(slice)));
 }

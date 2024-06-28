@@ -5,8 +5,8 @@
 #include <string>
 
 #include "Common.hpp"
-#include "Utils/Stack.hpp"
 #include "Value.hpp"
+#include "Utils/Stack.hpp"
 
 
 VM::State VM::VMstate;
@@ -69,16 +69,13 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::FALSE:
-                VMstate.stack.push(Value::boolVal(false));
+            case OpCode::FALSE: VMstate.stack.push(Value::BoolVal(false));
                 break;
 
-            case OpCode::TRUE:
-                VMstate.stack.push(Value::boolVal(true));
+            case OpCode::TRUE: VMstate.stack.push(Value::BoolVal(true));
                 break;
 
-            case OpCode::POP:
-                VMstate.stack.pop();
+            case OpCode::POP: VMstate.stack.pop();
                 break;
 
             case OpCode::GET_LOCAL: {
@@ -106,7 +103,7 @@ InterpretResult VM::run() {
             }
 
             case OpCode::GET_GLOBAL: {
-                const ObjString* name = Value::asObject(readConstant())->asString();
+                const ObjString* name = Value::AsObject(readConstant())->asString();
                 if (!VMstate.globals.contains(*name)) {
                     runtimeError("Undefined variable '{}'.", name->str);
                     return InterpretResult::RUNTIME_ERROR;
@@ -117,7 +114,7 @@ InterpretResult VM::run() {
             }
 
             case OpCode::GET_GLOBAL_LONG: {
-                const ObjString* name = Value::asObject(readConstantLong())->asString();
+                const ObjString* name = Value::AsObject(readConstantLong())->asString();
                 if (!VMstate.globals.contains(*name)) {
                     runtimeError("Undefined variable '{}'.", name->str);
                     return InterpretResult::RUNTIME_ERROR;
@@ -128,7 +125,7 @@ InterpretResult VM::run() {
             }
 
             case OpCode::SET_GLOBAL: {
-                const ObjString* name = Value::asObject(readConstant())->asString();
+                const ObjString* name = Value::AsObject(readConstant())->asString();
                 if (!VMstate.globals.contains(*name)) {
                     runtimeError("Undefined variable '{}'.", name->str);
                     return InterpretResult::RUNTIME_ERROR;
@@ -139,7 +136,7 @@ InterpretResult VM::run() {
             }
 
             case OpCode::SET_GLOBAL_LONG: {
-                const ObjString* name = Value::asObject(readConstantLong())->asString();
+                const ObjString* name = Value::AsObject(readConstantLong())->asString();
                 if (!VMstate.globals.contains(*name)) {
                     runtimeError("Undefined variable '{}'.", name->str);
                     return InterpretResult::RUNTIME_ERROR;
@@ -150,63 +147,58 @@ InterpretResult VM::run() {
             }
 
             case OpCode::DEF_GLOBAL: {
-                const ObjString* name = Value::asObject(readConstant())->asString();
+                const ObjString* name = Value::AsObject(readConstant())->asString();
                 defineGlobal(name, VMstate.stack.pop());
                 break;
             }
 
             case OpCode::DEF_GLOBAL_LONG: {
-                const ObjString* name = Value::asObject(readConstantLong())->asString();
+                const ObjString* name = Value::AsObject(readConstantLong())->asString();
                 defineGlobal(name, VMstate.stack.pop());
                 break;
             }
 
-            case OpCode::NONE:
-                VMstate.stack.push(Value::noneVal());
+            case OpCode::NONE: VMstate.stack.push(Value::NoneVal());
                 break;
 
-            case OpCode::CONSTANT_LONG:
-                Value constant = readConstantLong();
+            case OpCode::CONSTANT_LONG: Value constant = readConstantLong();
                 VMstate.stack.push(constant);
                 break;
 
-            case OpCode::DUP:
-                VMstate.stack.push(VMstate.stack.peek(0));
+            case OpCode::DUP: VMstate.stack.push(VMstate.stack.peek(0));
                 break;
 
-            case OpCode::EQUAL:
-                Value firstVal = VMstate.stack.pop();
+            case OpCode::EQUAL: Value firstVal = VMstate.stack.pop();
                 Value secondVal = VMstate.stack.pop();
-                VMstate.stack.push(Value::boolVal(secondVal.isEqualTo(firstVal)));
+                VMstate.stack.push(Value::BoolVal(secondVal.isEqualTo(firstVal)));
                 break;
 
-            case OpCode::GREATER:
-                if (auto a = binaryOp<std::greater<Value>>(&VM::digitChecker))
+            case OpCode::GREATER: if (auto a = binaryOp<std::greater<
+                    Value>>(&VM::digitChecker))
                     return a.value();
                 break;
 
-            case OpCode::LESS:
-                if (auto a = binaryOp<std::less<Value>>(&VM::digitChecker))
+            case OpCode::LESS: if (auto a = binaryOp<std::less<Value>>(&VM::digitChecker))
+                    return a.
+                        value();
+                break;
+
+            case OpCode::ADD: if (auto a = binaryOp<std::plus<Value>>(&VM::addableChecker))
+                    return a
+                        .value();
+                break;
+
+            case OpCode::MULTIPLY: if (auto a = binaryOp<std::multiplies<Value>>(
+                    &VM::multiplicableChecker))
                     return a.value();
                 break;
 
-            case OpCode::ADD:
-                if (auto a = binaryOp<std::plus<Value>>(&VM::addableChecker))
+            case OpCode::DIVIDE: if (auto a = binaryOp<std::divides<
+                    Value>>(&VM::digitChecker))
                     return a.value();
                 break;
 
-            case OpCode::MULTIPLY:
-                if (auto a = binaryOp<std::multiplies<Value>>(&VM::multiplicableChecker))
-                    return a.value();
-                break;
-
-            case OpCode::DIVIDE:
-                if (auto a = binaryOp<std::divides<Value>>(&VM::digitChecker))
-                    return a.value();
-                break;
-
-            case OpCode::NOT:
-                VMstate.stack.push(Value::boolVal(VMstate.stack.pop().isFalsey()));
+            case OpCode::NOT: VMstate.stack.push(Value::BoolVal(VMstate.stack.pop().isFalsey()));
                 break;
 
             case OpCode::NEGATE: {
@@ -224,23 +216,23 @@ InterpretResult VM::run() {
                 }
 
                 bool isDouble = a.isDouble();
-                double val = -Value::asDouble(a).as.decimal;
-                VMstate.stack.push(Value::numberVal(val, isDouble));
+                double val = -Value::AsDouble(a).as.decimal;
+                VMstate.stack.push(Value::NumberVal(val, isDouble));
                 break;
             }
 
-            case OpCode::LEFTSHIFT:
-                if (auto a = binaryOp<lshift<Value>>(&VM::integerChecker))
+            case OpCode::LEFTSHIFT: if (auto a = binaryOp<lshift<
+                    Value>>(&VM::integerChecker))
                     return a.value();
                 break;
 
-            case OpCode::RIGHTSHIFT:
-                if (auto a = binaryOp<rshift<Value>>(&VM::integerChecker))
+            case OpCode::RIGHTSHIFT: if (auto a = binaryOp<rshift<
+                    Value>>(&VM::integerChecker))
                     return a.value();
                 break;
 
-            case OpCode::MODULO:
-                if (auto a = binaryOp<std::modulus<Value>>(&VM::digitChecker))
+            case OpCode::MODULO: if (auto a = binaryOp<std::modulus<
+                    Value>>(&VM::digitChecker))
                     return a.value();
                 break;
 
@@ -274,8 +266,7 @@ InterpretResult VM::run() {
                 return InterpretResult::OK;
             }
 
-            default:
-                return InterpretResult::RUNTIME_ERROR;
+            default: return InterpretResult::RUNTIME_ERROR;
         }
     }
 }
@@ -307,11 +298,9 @@ InterpretResult VM::stringChecker() {
 
 InterpretResult VM::addableChecker() {
     if ((VMstate.stack.peek(0).isNumber() ||
-         VMstate.stack.peek(0).isObjectType(ObjType::STRING)) &&
+            VMstate.stack.peek(0).isObjectType(ObjType::STRING)) &&
         (VMstate.stack.peek(1).isNumber() ||
-         VMstate.stack.peek(1).isObjectType(ObjType::STRING))) {
-        return InterpretResult::OK;
-    }
+            VMstate.stack.peek(1).isObjectType(ObjType::STRING))) { return InterpretResult::OK; }
 
     runtimeError("Can only add numbers or strings.");
     return InterpretResult::RUNTIME_ERROR;
@@ -320,11 +309,9 @@ InterpretResult VM::addableChecker() {
 InterpretResult VM::multiplicableChecker() {
     if ((VMstate.stack.peek(0).isNumber() && VMstate.stack.peek(1).isNumber()) ||
         (VMstate.stack.peek(0).isNumber() &&
-         VMstate.stack.peek(1).isObjectType(ObjType::STRING)) ||
+            VMstate.stack.peek(1).isObjectType(ObjType::STRING)) ||
         (VMstate.stack.peek(0).isObjectType(ObjType::STRING) &&
-         VMstate.stack.peek(1).isNumber())) {
-        return InterpretResult::OK;
-    }
+            VMstate.stack.peek(1).isNumber())) { return InterpretResult::OK; }
 
     runtimeError("Can only multiply numbers.");
     return InterpretResult::RUNTIME_ERROR;

@@ -8,8 +8,8 @@
 #include "Common.hpp"
 #include "Object.hpp"
 #include "Scanner.hpp"
-#include "Utils/Enumerate.hpp"
 #include "Value.hpp"
+#include "Utils/Enumerate.hpp"
 
 
 int32_t g_innermostLoopStart = -1;
@@ -23,65 +23,65 @@ Compiler::Compiler(const std::shared_ptr<Chunk>& chunkToCompile) : chunk(chunkTo
 
     // clang-format off
     //       ParseTable Position        |         prefix        |     infix      |        precedence       |
-    rules[TokenType::LPAREN]     = { &Compiler::grouping,  nullptr,             Precedence::CALL       };
-    rules[TokenType::RPAREN]     = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::LBRACE]     = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::RBRACE]     = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::LBRACK]     = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::RBRACK]     = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::COMMA]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::DOT]        = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::MINUS]      = { &Compiler::unary,     &Compiler::binary,   Precedence::TERM       };
-    rules[TokenType::PLUS]       = { nullptr,              &Compiler::binary,   Precedence::TERM       };
-    rules[TokenType::PERCENT]    = { nullptr,              &Compiler::binary,   Precedence::FACTOR     };
-    rules[TokenType::SEMI]       = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::SLASH]      = { nullptr,              &Compiler::binary,   Precedence::FACTOR     };
-    rules[TokenType::STAR]       = { nullptr,              &Compiler::binary,   Precedence::FACTOR     };
-    rules[TokenType::COLON]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::BANG]       = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::BANG_EQ]    = { nullptr,              &Compiler::binary,   Precedence::EQUALITY   };
-    rules[TokenType::EQ]         = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::EQ_EQ]      = { nullptr,              &Compiler::binary,   Precedence::EQUALITY   };
-    rules[TokenType::GREATER]    = { nullptr,              &Compiler::binary,   Precedence::COMPARISON };
-    rules[TokenType::GREATER_EQ] = { nullptr,              &Compiler::binary,   Precedence::COMPARISON };
-    rules[TokenType::LESS]       = { nullptr,              &Compiler::binary,   Precedence::COMPARISON };
-    rules[TokenType::LESS_EQ]    = { nullptr,              &Compiler::binary,   Precedence::COMPARISON };
-    rules[TokenType::LSHIFT]     = { nullptr,              &Compiler::binary,   Precedence::SHIFT      };
-    rules[TokenType::RSHIFT]     = { nullptr,              &Compiler::binary,   Precedence::SHIFT      };
-    rules[TokenType::AMPERSAND]  = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::PIPE]       = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::CARET]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::IDENTIFIER] = { &Compiler::variable,  nullptr,             Precedence::NONE       };
-    rules[TokenType::STR]        = { &Compiler::string,    nullptr,             Precedence::NONE       };
-    rules[TokenType::NUM]        = { &Compiler::number,    nullptr,             Precedence::NONE       };
-    rules[TokenType::INF]        = { &Compiler::number,    nullptr,             Precedence::NONE       };
-    rules[TokenType::NAN]        = { &Compiler::number,    nullptr,             Precedence::NONE       };
-    rules[TokenType::AND]        = { nullptr,              &Compiler::and_,     Precedence::AND        };
-    rules[TokenType::OR]         = { nullptr,              &Compiler::or_,      Precedence::OR         };
-    rules[TokenType::NOT]        = { &Compiler::unary,     nullptr,             Precedence::NONE       };
-    rules[TokenType::CLASS]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::ELSE]       = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::FALSE]      = { &Compiler::literal,   nullptr,             Precedence::NONE       };
-    rules[TokenType::FOR]        = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::DEF]        = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::IF]         = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::NONE]       = { &Compiler::literal,   nullptr,             Precedence::NONE       };
-    rules[TokenType::PRINT]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::RETURN]     = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::SUPER]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::THIS]       = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::TRUE]       = { &Compiler::literal,   nullptr,             Precedence::NONE       };
-    rules[TokenType::LET]        = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::WHILE]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::EXTENDS]    = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::SWITCH]     = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::CASE]       = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::DEFAULT]    = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::CONTINUE]   = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::BREAK]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::IN]         = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::ERROR]      = { nullptr,              nullptr,             Precedence::NONE       };
-    rules[TokenType::EOF]        = { nullptr,              nullptr,             Precedence::NONE       };
+    rules[TokenType::LPAREN] = {&Compiler::grouping, nullptr, Precedence::CALL};
+    rules[TokenType::RPAREN] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::LBRACE] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::RBRACE] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::LBRACK] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::RBRACK] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::COMMA] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::DOT] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::MINUS] = {&Compiler::unary, &Compiler::binary, Precedence::TERM};
+    rules[TokenType::PLUS] = {nullptr, &Compiler::binary, Precedence::TERM};
+    rules[TokenType::PERCENT] = {nullptr, &Compiler::binary, Precedence::FACTOR};
+    rules[TokenType::SEMI] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::SLASH] = {nullptr, &Compiler::binary, Precedence::FACTOR};
+    rules[TokenType::STAR] = {nullptr, &Compiler::binary, Precedence::FACTOR};
+    rules[TokenType::COLON] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::BANG] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::BANG_EQ] = {nullptr, &Compiler::binary, Precedence::EQUALITY};
+    rules[TokenType::EQ] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::EQ_EQ] = {nullptr, &Compiler::binary, Precedence::EQUALITY};
+    rules[TokenType::GREATER] = {nullptr, &Compiler::binary, Precedence::COMPARISON};
+    rules[TokenType::GREATER_EQ] = {nullptr, &Compiler::binary, Precedence::COMPARISON};
+    rules[TokenType::LESS] = {nullptr, &Compiler::binary, Precedence::COMPARISON};
+    rules[TokenType::LESS_EQ] = {nullptr, &Compiler::binary, Precedence::COMPARISON};
+    rules[TokenType::LSHIFT] = {nullptr, &Compiler::binary, Precedence::SHIFT};
+    rules[TokenType::RSHIFT] = {nullptr, &Compiler::binary, Precedence::SHIFT};
+    rules[TokenType::AMPERSAND] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::PIPE] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::CARET] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::IDENTIFIER] = {&Compiler::variable, nullptr, Precedence::NONE};
+    rules[TokenType::STR] = {&Compiler::string, nullptr, Precedence::NONE};
+    rules[TokenType::NUM] = {&Compiler::number, nullptr, Precedence::NONE};
+    rules[TokenType::INF] = {&Compiler::number, nullptr, Precedence::NONE};
+    rules[TokenType::NAN] = {&Compiler::number, nullptr, Precedence::NONE};
+    rules[TokenType::AND] = {nullptr, &Compiler::and_, Precedence::AND};
+    rules[TokenType::OR] = {nullptr, &Compiler::or_, Precedence::OR};
+    rules[TokenType::NOT] = {&Compiler::unary, nullptr, Precedence::NONE};
+    rules[TokenType::CLASS] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::ELSE] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::FALSE] = {&Compiler::literal, nullptr, Precedence::NONE};
+    rules[TokenType::FOR] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::DEF] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::IF] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::NONE] = {&Compiler::literal, nullptr, Precedence::NONE};
+    rules[TokenType::PRINT] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::RETURN] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::SUPER] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::THIS] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::TRUE] = {&Compiler::literal, nullptr, Precedence::NONE};
+    rules[TokenType::LET] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::WHILE] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::EXTENDS] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::SWITCH] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::CASE] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::DEFAULT] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::CONTINUE] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::BREAK] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::IN] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::ERROR] = {nullptr, nullptr, Precedence::NONE};
+    rules[TokenType::EOF] = {nullptr, nullptr, Precedence::NONE};
     // clang-format on
 }
 
@@ -103,12 +103,10 @@ void Compiler::errorAt(Token token, const std::string& message) {
     parser.panicMode = true;
     FMT_PRINT("[line {}] Error", token.line);
 
-    if (token.type == TokenType::EOF) {
-        FMT_PRINT(" at end");
-    } else if (token.type == TokenType::ERROR) {  // Nothing
-    } else {
-        FMT_PRINT(" at '{}'", token.lexeme);
+    if (token.type == TokenType::EOF) { FMT_PRINT(" at end"); }
+    else if (token.type == TokenType::ERROR) { // Nothing
     }
+    else { FMT_PRINT(" at '{}'", token.lexeme); }
 
     FMT_PRINT(": {}\n", message);
     parser.hadError = true;
@@ -130,9 +128,7 @@ bool Compiler::match(const TokenType::Type type) {
     return true;
 }
 
-void Compiler::emitByte(const uint8_t byte) const {
-    chunk->write(byte, parser.previous.line);
-}
+void Compiler::emitByte(const uint8_t byte) const { chunk->write(byte, parser.previous.line); }
 
 void Compiler::emitBytes(const uint8_t byte1, const uint8_t byte2) const {
     emitByte(byte1);
@@ -175,9 +171,7 @@ void Compiler::patchJump(const int32_t offset) {
 void Compiler::patchJumpLong(const uint32_t offset) {
     const uint32_t jump = static_cast<uint32_t>(chunk->code.size()) - offset - 4;
 
-    if (jump > UINT32_MAX) {
-        errorAt(parser.previous, "Too much code to jump over.");
-    }
+    if (jump > UINT32_MAX) { errorAt(parser.previous, "Too much code to jump over."); }
 
     chunk->code[offset] = jump >> 24 & 0xff;
     chunk->code[offset + 1] = jump >> 16 & 0xff;
@@ -193,9 +187,7 @@ void Compiler::emitLoop(const uint16_t loopStart) {
     emitByte(OpCode::LOOP);
 
     const uint16_t offset = static_cast<uint16_t>(chunk->code.size()) - loopStart + 2;
-    if (offset > UINT16_MAX) {
-        errorAt(parser.previous, "Loop body too large.");
-    }
+    if (offset > UINT16_MAX) { errorAt(parser.previous, "Loop body too large."); }
 
     emitByte(offset >> 8 & 0xff);
     emitByte(offset & 0xff);
@@ -207,9 +199,7 @@ void Compiler::endCompiler() const {
     emitReturn();
 
 #if defined(TRACE_EXECUTION)
-    if (!parser.hadError) {
-        chunk->disassemble("code");
-    }
+    if (!parser.hadError) { chunk->disassemble("code"); }
 #endif
 }
 
@@ -248,8 +238,8 @@ void Compiler::parsePrecedence(const Precedence precedence) {
 }
 
 uint32_t Compiler::identifierConstant(const Token* name) const {
-    ObjString* str = ObjString::create(name->lexeme);
-    const Value objVal = Value::objectVal(str);
+    ObjString* str = ObjString::Create(name->lexeme);
+    const Value objVal = Value::ObjectVal(str);
     return chunk->addConstant(objVal);
 }
 
@@ -296,8 +286,7 @@ void Compiler::declareVariable() {
     const Token* name = &parser.previous;
 
     for (const auto& [localName, localDepth] : state->locals | std::views::reverse) {
-        if (localDepth != -1 && static_cast<unsigned>(localDepth) < state->scopeDepth)
-            break;
+        if (localDepth != -1 && static_cast<unsigned>(localDepth) < state->scopeDepth) break;
 
         if (name->lexeme == localName.lexeme) {
             errorAt(*name, "Already variable with this name in this scope.");
@@ -319,7 +308,8 @@ void Compiler::namedVariable(const Token& name, const bool canAssign) {
     if (arg) {
         getOp = OpCode::GET_LOCAL;
         setOp = OpCode::SET_LOCAL;
-    } else {
+    }
+    else {
         arg = identifierConstant(&name);
         getOp = OpCode::GET_GLOBAL;
         setOp = OpCode::SET_GLOBAL;
@@ -328,9 +318,8 @@ void Compiler::namedVariable(const Token& name, const bool canAssign) {
     if (canAssign && match(TokenType::EQ)) {
         expression();
         emitVariable(setOp, *arg);
-    } else {
-        emitVariable(getOp, *arg);
     }
+    else { emitVariable(getOp, *arg); }
 }
 
 void Compiler::and_(bool) {
@@ -427,40 +416,36 @@ void Compiler::switchStatement() {
                 previousCaseSkip = static_cast<int16_t>(emitJump(OpCode::JUMP_FALSE));
 
                 emitByte(OpCode::POP);
-            } else {
+            }
+            else {
                 switchState = SwitchState::DONE;
                 consume(TokenType::COLON, "Expected ':' after 'default'.");
                 previousCaseSkip = -1;
             }
-        } else {
+        }
+        else {
             if (switchState == SwitchState::PRE_CASE) {
                 errorAt(parser.previous,
                         "Can't have a default case without a case before it.");
             }
             beginScope();
             while (parser.current.type != TokenType::CASE &&
-                   parser.current.type != TokenType::DEFAULT &&
-                   parser.current.type != TokenType::RBRACE &&
-                   parser.current.type != TokenType::EOF) {
-                declaration();
-            }
+                parser.current.type != TokenType::DEFAULT &&
+                parser.current.type != TokenType::RBRACE &&
+                parser.current.type != TokenType::EOF) { declaration(); }
             endScope();
             if (match(TokenType::RBRACE)) advance();
         }
     }
 
-    if (caseCount < 1) {
-        errorAt(parser.previous, "Switch statement must have more than 1 case.");
-    }
+    if (caseCount < 1) { errorAt(parser.previous, "Switch statement must have more than 1 case."); }
 
     if (switchState == SwitchState::PRE_DEFAULT) {
         patchJump(previousCaseSkip);
         emitByte(OpCode::POP);
     }
 
-    for (uint16_t i = 0; i < caseCount; i++) {
-        patchJump(caseEnds[i]);
-    }
+    for (uint16_t i = 0; i < caseCount; i++) { patchJump(caseEnds[i]); }
 
     emitByte(OpCode::POP);
 }
@@ -489,11 +474,9 @@ void Compiler::forStatement() {
     consume(TokenType::LPAREN, "Expected '(' after 'for'.");
     if (match(TokenType::SEMI)) {
         // No initializer.
-    } else if (match(TokenType::LET)) {
-        varDeclaration();
-    } else {
-        expressionStatement();
     }
+    else if (match(TokenType::LET)) { varDeclaration(); }
+    else { expressionStatement(); }
 
     const int32_t surroundingLoopStart = g_innermostLoopStart;
     const uint16_t surroundingLoopScopeDepth = g_innermostLoopScopeDepth;
@@ -552,48 +535,40 @@ void Compiler::continueStatement() {
     emitLoop(static_cast<uint16_t>(g_innermostLoopStart));
 }
 
-void Compiler::breakStatement() {
-    consume(TokenType::SEMI, "Expected ';' after break.");
-}  // TODO: implement me
+void Compiler::breakStatement() { consume(TokenType::SEMI, "Expected ';' after break."); }
+// TODO: implement me
 
 void Compiler::statement() {
     if (match(TokenType::PRINT)) {
-        printStatement();  // TODO: move to native function
-    } else if (match(TokenType::IF)) {
-        ifStatement();
-    } else if (match(TokenType::LBRACE)) {
+        printStatement(); // TODO: move to native function
+    }
+    else if (match(TokenType::IF)) { ifStatement(); }
+    else if (match(TokenType::LBRACE)) {
         beginScope();
         block();
         endScope();
-    } else if (match(TokenType::SWITCH)) {
-        switchStatement();  // TODO: make me work
-    } else if (match(TokenType::WHILE)) {
-        whileStatement();
-    } else if (match(TokenType::FOR)) {
-        forStatement();
-    } else if (match(TokenType::CONTINUE)) {
-        continueStatement();
-    } else if (match(TokenType::BREAK)) {
-        breakStatement();
-    } else if (match(TokenType::RETURN)) {
-        if (match(TokenType::SEMI)) {
-            emitReturn();
-        } else {
+    }
+    else if (match(TokenType::SWITCH)) {
+        switchStatement(); // TODO: make me work
+    }
+    else if (match(TokenType::WHILE)) { whileStatement(); }
+    else if (match(TokenType::FOR)) { forStatement(); }
+    else if (match(TokenType::CONTINUE)) { continueStatement(); }
+    else if (match(TokenType::BREAK)) { breakStatement(); }
+    else if (match(TokenType::RETURN)) {
+        if (match(TokenType::SEMI)) { emitReturn(); }
+        else {
             expression();
             consume(TokenType::SEMI, "Expected ';' after return value.");
             emitByte(OpCode::RETURN);
         }
-    } else {
-        expressionStatement();
     }
+    else { expressionStatement(); }
 }
 
 void Compiler::declaration() {
-    if (match(TokenType::LET)) {
-        varDeclaration();
-    } else {
-        statement();
-    }
+    if (match(TokenType::LET)) { varDeclaration(); }
+    else { statement(); }
 
     if (parser.panicMode) panicSync();
 }
@@ -601,11 +576,8 @@ void Compiler::declaration() {
 void Compiler::varDeclaration() {
     const uint32_t var = parseVariable("Expected variable name.");
 
-    if (match(TokenType::EQ)) {
-        expression();
-    } else {
-        emitByte(OpCode::NONE);
-    }
+    if (match(TokenType::EQ)) { expression(); }
+    else { emitByte(OpCode::NONE); }
 
     consume(TokenType::SEMI, "Expected ';' after variable declaration.");
 
@@ -614,9 +586,7 @@ void Compiler::varDeclaration() {
 
 void Compiler::block() {
     while (parser.current.type != TokenType::RBRACE &&
-           parser.current.type != TokenType::EOF) {
-        declaration();
-    }
+        parser.current.type != TokenType::EOF) { declaration(); }
 
     consume(TokenType::RBRACE, "Expected '}' after block.");
 }
@@ -627,7 +597,7 @@ void Compiler::endScope() const {
     state->scopeDepth--;
 
     while (!state->locals.empty() &&
-           static_cast<uint32_t>(state->locals.back().depth) > state->scopeDepth) {
+        static_cast<uint32_t>(state->locals.back().depth) > state->scopeDepth) {
         emitByte(OpCode::POP);
         state->locals.pop_back();
     }
@@ -647,10 +617,9 @@ void Compiler::panicSync() {
             case TokenType::IF:
             case TokenType::WHILE:
             case TokenType::PRINT:
-            case TokenType::RETURN:
-                return;
+            case TokenType::RETURN: return;
 
-            default:;  // Do nothing.
+            default: ; // Do nothing.
         }
 
         advance();
@@ -664,8 +633,10 @@ void Compiler::unary(bool) {
 
     // clang-format off
     switch (operatorType) {
-        case TokenType::NOT: emitByte(OpCode::NOT); break;
-        case TokenType::MINUS: emitByte(OpCode::NEGATE); break;
+        case TokenType::NOT: emitByte(OpCode::NOT);
+            break;
+        case TokenType::MINUS: emitByte(OpCode::NEGATE);
+            break;
         default: return; // Unreachable.
     }
     // clang-format on
@@ -678,19 +649,32 @@ void Compiler::binary(bool) {
 
     // clang-format off
     switch (operatorType) {
-        case TokenType::MINUS:        emitBytes(OpCode::NEGATE, OpCode::ADD); break;
-        case TokenType::PLUS:          emitByte(OpCode::ADD); break;
-        case TokenType::SLASH:         emitByte(OpCode::DIVIDE); break;
-        case TokenType::STAR:          emitByte(OpCode::MULTIPLY); break;
-        case TokenType::BANG_EQ:      emitBytes(OpCode::EQUAL, OpCode::NOT); break;
-        case TokenType::EQ_EQ:         emitByte(OpCode::EQUAL); break;
-        case TokenType::GREATER:       emitByte(OpCode::GREATER); break;
-        case TokenType::GREATER_EQ:   emitBytes(OpCode::LESS, OpCode::NOT); break;
-        case TokenType::LESS:          emitByte(OpCode::LESS); break;
-        case TokenType::LESS_EQ:      emitBytes(OpCode::GREATER, OpCode::NOT); break;
-        case TokenType::LSHIFT:        emitByte(OpCode::LEFTSHIFT); break;
-        case TokenType::RSHIFT:        emitByte(OpCode::RIGHTSHIFT); break;
-        case TokenType::PERCENT:       emitByte(OpCode::MODULO); break;
+        case TokenType::MINUS: emitBytes(OpCode::NEGATE, OpCode::ADD);
+            break;
+        case TokenType::PLUS: emitByte(OpCode::ADD);
+            break;
+        case TokenType::SLASH: emitByte(OpCode::DIVIDE);
+            break;
+        case TokenType::STAR: emitByte(OpCode::MULTIPLY);
+            break;
+        case TokenType::BANG_EQ: emitBytes(OpCode::EQUAL, OpCode::NOT);
+            break;
+        case TokenType::EQ_EQ: emitByte(OpCode::EQUAL);
+            break;
+        case TokenType::GREATER: emitByte(OpCode::GREATER);
+            break;
+        case TokenType::GREATER_EQ: emitBytes(OpCode::LESS, OpCode::NOT);
+            break;
+        case TokenType::LESS: emitByte(OpCode::LESS);
+            break;
+        case TokenType::LESS_EQ: emitBytes(OpCode::GREATER, OpCode::NOT);
+            break;
+        case TokenType::LSHIFT: emitByte(OpCode::LEFTSHIFT);
+            break;
+        case TokenType::RSHIFT: emitByte(OpCode::RIGHTSHIFT);
+            break;
+        case TokenType::PERCENT: emitByte(OpCode::MODULO);
+            break;
         default: return; // Unreachable
     }
     // clang-format on
@@ -699,40 +683,42 @@ void Compiler::binary(bool) {
 void Compiler::literal(bool) const {
     // clang-format off
     switch (parser.previous.type) {
-        case TokenType::FALSE: emitByte(OpCode::FALSE); break;
-        case TokenType::TRUE:  emitByte(OpCode::TRUE); break;
-        case TokenType::NONE:  emitByte(OpCode::NONE); break;
+        case TokenType::FALSE: emitByte(OpCode::FALSE);
+            break;
+        case TokenType::TRUE: emitByte(OpCode::TRUE);
+            break;
+        case TokenType::NONE: emitByte(OpCode::NONE);
+            break;
         default: return; // Unreachable
     }
     // clang-format on
 }
 
 void Compiler::string(bool) const {
-    ObjString* str = ObjString::create(parser.previous.lexeme, {1, -1});
-    emitConstant(Value::objectVal(str));
+    ObjString* str = ObjString::Create(parser.previous.lexeme, {1, -1});
+    emitConstant(Value::ObjectVal(str));
 }
 
-void Compiler::variable(const bool canAssign) {
-    namedVariable(parser.previous, canAssign);
-}
+void Compiler::variable(const bool canAssign) { namedVariable(parser.previous, canAssign); }
 
 void Compiler::number(bool) const {
-    if (parser.previous.lexeme == "nan") {
-        emitConstant(Value::nan(true));
+    if (parser.previous.lexeme == "Nan") {
+        emitConstant(Value::Nan(true));
         return;
     }
 
     if (parser.previous.lexeme == "inf") {
-        emitConstant(Value::infinity(true));
+        emitConstant(Value::Infinity(true));
         return;
     }
 
     if (parser.previous.lexeme.find('.') != std::string::npos) {
         const double value = std::stod(parser.previous.lexeme);
-        emitConstant(Value::doubleVal(value));
-    } else {
+        emitConstant(Value::DoubleVal(value));
+    }
+    else {
         const int value = std::stoi(parser.previous.lexeme);
-        emitConstant(Value::integerVal(value));
+        emitConstant(Value::IntegerVal(value));
     }
 }
 
@@ -747,9 +733,7 @@ bool Compiler::compile(const std::string& source) {
 
     advance();
 
-    while (!match(TokenType::EOF)) {
-        declaration();
-    }
+    while (!match(TokenType::EOF)) { declaration(); }
 
     endCompiler();
     return !parser.hadError;

@@ -72,9 +72,7 @@ public:
 
     static void addString(const ObjString* string) { VMstate.strings.emplace(*string); }
 
-    static bool hasString(const ObjString* string) {
-        return VMstate.strings.contains(*string);
-    }
+    static bool hasString(const ObjString* string) { return VMstate.strings.contains(*string); }
 
     static bool hasString(const std::string& string) {
         for (const auto& [obj, str] : VMstate.strings) { if (str == string) return true; }
@@ -82,9 +80,7 @@ public:
     }
 
     static const ObjString* getString(const std::string& string) {
-        for (const auto& objStr : VMstate.strings) {
-            if (objStr.str == string) return &objStr;
-        }
+        for (const auto& objStr : VMstate.strings) { if (objStr.str == string) return &objStr; }
         return nullptr;
     }
 
@@ -117,14 +113,16 @@ public:
         Value a = VMstate.stack.pop();
 
         if constexpr (auto val = Op{}(a, b); std::is_same_v<
-            decltype(val), bool>) { VMstate.stack.push(Value::boolVal(val)); } else if
+            decltype(val), bool>) { VMstate.stack.push(Value::boolVal(val)); }
+        else if
         constexpr (std::is_same_v<decltype(val), std::string>) {
-            VMstate.stack.push(Value::objectVal(ObjString::create(val)));
-        } else if constexpr (std::is_same_v<decltype(val), Obj*>) {
+            VMstate.stack.push(Value::objectVal(ObjString::Create(val)));
+        }
+        else if constexpr (std::is_same_v<decltype(val), Obj*>) {
             VMstate.stack.push(Value::objectVal(val));
-        } else if constexpr (std::is_same_v<decltype(val), Value>) {
-            VMstate.stack.push(val);
-        } else { FMT_PRINT("Unknown type, type was {}.\n", typeid(val).name()); }
+        }
+        else if constexpr (std::is_same_v<decltype(val), Value>) { VMstate.stack.push(val); }
+        else { FMT_PRINT("Unknown type, type was {}.\n", typeid(val).name()); }
 
         return std::nullopt;
     }

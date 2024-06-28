@@ -35,9 +35,11 @@ int main(const int argc, char** argv) {
     options.add_option("", {"file", "", cxxopts::value<std::string>()});
     options.add_option("", {"r,run", "Runs a given PythOwOn file."});
     options.add_option("", {"c,compile", "Compile a PythOwOn file into bytecode."});
-    options.add_option("", {"o,output",
-                            "Output file for compiled bytecode.",
-                            cxxopts::value<std::string>()});
+    options.add_option("", {
+                           "o,output",
+                           "Output file for compiled bytecode.",
+                           cxxopts::value<std::string>()
+                       });
 
     options.add_option("", {"i,interpret", "Start PythOwOn in interactive mode"});
     options.add_option("", {"h,help", "Print usage"});
@@ -172,9 +174,49 @@ uint8_t runInterpretedFile(std::ifstream& file) {
     return 0;
 }
 
+Value readConstant(std::ifstream& file, const std::vector<std::string>& strTable) {
+    Value val;
+
+    val.type = static_cast<ValueType>(file.get());
+
+    switch (val.type) {
+        case ValueType::NONE: val.as.obj = nullptr;
+            break;
+        case ValueType::INFINITY:
+        case ValueType::NAN:
+        case ValueType::BOOL: val.as.boolean = file.get();
+            break;
+
+        case ValueType::INT: file.read(reinterpret_cast<char*>(&val.as.integer),
+                                       sizeof(val.as.integer));
+            break;
+
+        case ValueType::DOUBLE: file.read(reinterpret_cast<char*>(&val.as.decimal),
+                                          sizeof(val.as.decimal));
+            break;
+        case ValueType::OBJECT: {
+            switch (file.get()) {
+                case ObjType::STRING: {
+                    val.as.obj = reinterpret_cast<Obj*>(new ObjString());
+                    val.as.obj->type = ObjType::STRING;
+
+                    uint32_t strIndex = 0;
+                    file.read(reinterpret_cast<char*>(&strIndex), sizeof(uint32_t));
+                    const_cast<std::string&>(val.as.obj->asString()->str) = strTable[strIndex];
+                }
+                case ObjType::NONE:
+                default: break;
+            }
+        default: break;
+        }
+    }
+
+    return val;
+}
+
 uint8_t runCompiledFile(std::ifstream& file, const size_t fileLen,
                         const std::string& fileName) {
-    // read 4 bytes for number of constants, 4 bytes for number line indices
+    // read 4 bytes for number line indices, 4 bytes for number of constants, 4 bytes for number of strings in string table
     auto* temp32 = new char[sizeof(uint32_t)];
     auto* temp64 = new char[sizeof(size_t)];
     auto* tempValue = new char[sizeof(Value)];
@@ -184,19 +226,28 @@ uint8_t runCompiledFile(std::ifstream& file, const size_t fileLen,
     const uint32_t numLines = BEStrToLE<uint32_t>(temp32);
     file.read(temp32, 4);
     const uint32_t numConstants = BEStrToLE<uint32_t>(temp32);
+    file.read(temp32, 4);
+    const uint32_t numStrings = BEStrToLE<uint32_t>(temp32);
+
+    // read string table
+    std::vector<std::string> strTable(numStrings);
+    for (uint32_t i = 0; i < numStrings; i++) {
+        file.read(temp32, 4);
+        const uint32_t strSize = BEStrToLE<uint32_t>(temp32);
+        strTable[i].resize(strSize);
+        file.read(strTable[i].data(), strSize);
+    }
+
+    // read constants
+    std::vector<Value> constants(numConstants);
+    for (uint32_t i = 0; i < numConstants; ++i) { constants[i] = readConstant(file, strTable); }
+
 
     // read line indices
     std::vector<size_t> lines(numLines);
     for (uint32_t i = 0; i < numLines; i++) {
         file.read(temp64, sizeof(size_t));
         lines[i] = BEStrToLE<size_t>(temp64);
-    }
-
-    // read constants
-    std::vector<Value> constants(numConstants);
-    for (uint32_t i = 0; i < numConstants; ++i) {
-        file.read(tempValue, sizeof(Value));
-        constants[i] = BEStrToLE<Value>(tempValue);
     }
 
     // read code
@@ -255,12 +306,10 @@ uint8_t runFile(std::string path) {
     byteArray[0] = static_cast<uint8_t>(value.type);
 
     switch (value.type) {
-        case ValueType::NONE:
-            break;
+        case ValueType::NONE: break;
         case ValueType::INFINITY:
         case ValueType::NAN:
-        case ValueType::BOOL:
-            byteArray[1] = value.as.boolean;
+        case ValueType::BOOL: byteArray[1] = value.as.boolean;
             break;
         case ValueType::INT: {
             const char* integerBytes =
@@ -277,18 +326,20 @@ uint8_t runFile(std::string path) {
         case ValueType::OBJECT: {
             const Obj* object = value.as.obj;
             switch (object->type) {
-                case ObjType::STRING:
-                    byteArray[1] = static_cast<uint8_t>(ObjType::STRING);
+                case ObjType::STRING: byteArray[1] = static_cast<uint8_t>(
+                        ObjType::STRING);
                     strTable.push_back(object->asString()->str);
-                    byteArray[2] = static_cast<uint8_t>(strTable.size() - 1);
+                    const uint32_t strTableIndex = static_cast<uint32_t>(strTable.size());
+                    std::copy_n(
+                        LEtoBEStr<uint32_t>(strTableIndex - 1),
+                        4,
+                        &byteArray[2]);
                     break;
 
                 case ObjType::NONE:
-                default:
-                    break;
+                default: break;
             }
-        default:
-            break;
+        default: break;
         }
     }
 }
@@ -300,16 +351,21 @@ std::ostream& operator<<(std::ostream& os, const std::vector<Value>& value) {
     // first pass
     for (auto& val : value) { valueBytes.push_back(ValueToBytes(val, strTable)); }
 
-    os.write(LEtoBEStr<uint32_t>(static_cast<uint32_t>(strTable.size())),
-             sizeof(uint32_t));
+    const uint32_t strTableSize = static_cast<uint32_t>(strTable.size());
+    os.write(LEtoBEStr<uint32_t>(strTableSize), sizeof(uint32_t));
 
-    for (const char* val : valueBytes) os << val;
-
+    // write string table
     for (const auto& str : strTable) {
-        os.write(LEtoBEStr<uint32_t>(static_cast<uint32_t>(str.size())),
-                 sizeof(uint32_t));
-        os.write(str.data(), str.size());
+        uint32_t strSize = static_cast<uint32_t>(str.size());
+        os.write(LEtoBEStr<uint32_t>(strSize), sizeof(uint32_t));
+        os.write(str.data(), strSize);
     }
+
+    // second pass
+    // write constants
+    for (const char* val : valueBytes) os.write(val, sizeof(Value));
+
+    return os;
 }
 
 uint8_t compileFile(std::string path, std::string outFile) {
