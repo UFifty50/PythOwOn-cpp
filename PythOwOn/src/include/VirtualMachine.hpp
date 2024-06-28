@@ -5,14 +5,16 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Chunk.hpp"
 #include "Common.hpp"
 #include "Object.hpp"
+#include "Value.hpp"
 #include "Utils/LinkedList.hpp"
 #include "Utils/Stack.hpp"
-#include "Value.hpp"
 
 
 class VM {
@@ -21,7 +23,7 @@ public:
         std::shared_ptr<Chunk> chunk;
         uint8_t* ip;
         Stack<Value> stack;
-        std::unordered_map<ObjString, Value> strings;
+        std::unordered_set<ObjString> strings;
         std::unordered_map<ObjString, Value> globals;
         LinkedList::Single<Obj*> objects;
     };
@@ -68,8 +70,22 @@ public:
         return reinterpret_cast<O*>(object);
     }
 
-    static void addString(const ObjString* string, const Value& value) {
-        VMstate.strings[*string] = value;
+    static void addString(const ObjString* string) { VMstate.strings.emplace(*string); }
+
+    static bool hasString(const ObjString* string) {
+        return VMstate.strings.contains(*string);
+    }
+
+    static bool hasString(const std::string& string) {
+        for (const auto& [obj, str] : VMstate.strings) { if (str == string) return true; }
+        return false;
+    }
+
+    static const ObjString* getString(const std::string& string) {
+        for (const auto& objStr : VMstate.strings) {
+            if (objStr.str == string) return &objStr;
+        }
+        return nullptr;
     }
 
     static void defineGlobal(const ObjString* name, const Value& value) {
@@ -100,17 +116,15 @@ public:
         Value b = VMstate.stack.pop();
         Value a = VMstate.stack.pop();
 
-        if constexpr (auto val = Op{}(a, b); std::is_same_v<decltype(val), bool>) {
-            VMstate.stack.push(Value::boolVal(val));
-        } else if constexpr (std::is_same_v<decltype(val), std::string>) {
+        if constexpr (auto val = Op{}(a, b); std::is_same_v<
+            decltype(val), bool>) { VMstate.stack.push(Value::boolVal(val)); } else if
+        constexpr (std::is_same_v<decltype(val), std::string>) {
             VMstate.stack.push(Value::objectVal(ObjString::create(val)));
         } else if constexpr (std::is_same_v<decltype(val), Obj*>) {
             VMstate.stack.push(Value::objectVal(val));
         } else if constexpr (std::is_same_v<decltype(val), Value>) {
             VMstate.stack.push(val);
-        } else {
-            FMT_PRINT("Unknown type, type was {}.\n", typeid(val).name());
-        }
+        } else { FMT_PRINT("Unknown type, type was {}.\n", typeid(val).name()); }
 
         return std::nullopt;
     }

@@ -9,8 +9,8 @@
 InterpretResult CompilationPipeline::interpret(const std::string& source) {
     auto [result, chunk] = compile(source);
     if (result == InterpretResult::OK) {
-        vm->setChunk(chunk);
-        return vm->run();
+        VM::setChunk(chunk);
+        return VM::run();
     }
 
     return result;
@@ -28,8 +28,7 @@ std::pair<InterpretResult, std::shared_ptr<Chunk>> CompilationPipeline::compile(
     return {InterpretResult::OK, chunk};
 }
 
-InterpretResult CompilationPipeline::runCompiled(
-    const std::shared_ptr<Chunk>& chunk) const {
-    vm->setChunk(chunk);
-    return vm->run();
+InterpretResult CompilationPipeline::runCompiled(const std::shared_ptr<Chunk>& chunk) {
+    VM::setChunk(chunk);
+    return VM::run();
 }

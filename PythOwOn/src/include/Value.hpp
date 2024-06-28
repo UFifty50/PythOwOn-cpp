@@ -2,7 +2,6 @@
 #define VALUE_HPP
 
 #include <corecrt_math.h>
-#include <float.h>
 
 #include <cmath>
 #include <ostream>
@@ -15,7 +14,7 @@
 #include "Object.hpp"
 
 
-enum class ValueType {
+enum class ValueType : uint8_t {
     NONE,
     BOOL,
     INT,
@@ -36,6 +35,7 @@ void Debug_printValue(Value value);
 
 struct Value {
     ValueType type;
+
     union {
         bool boolean;
         ssize_t integer;
@@ -206,14 +206,16 @@ struct Value {
         if constexpr (std::is_same_v<A, Obj*> && std::is_same_v<B, Value>) {
             if (b.isNumber()) {
                 std::string str;
-                for (ssize_t i = 0; i < asInteger(b).as.integer; i++)
+                for (ssize_t i = 0; i < asInteger(b).as.integer; i
+                     ++)
                     str += a->asString()->str;
                 return objectVal(ObjString::create(str));
             }
         } else if constexpr (std::is_same_v<A, Value> && std::is_same_v<B, Obj*>) {
             if (a.isNumber()) {
                 std::string str;
-                for (ssize_t i = 0; i < asInteger(a).as.integer; i++)
+                for (ssize_t i = 0; i < asInteger(a).as.integer; i
+                     ++)
                     str += b->asString()->str;
                 return objectVal(ObjString::create(str));
             }
@@ -228,22 +230,26 @@ struct Value {
             return nan(false);
 
         if (other.isNumber() && ProxEqual<double>(asDouble(other).as.decimal, 0))
-            return infinity(asDouble(*this).as.decimal > 0);
+            return
+                infinity(asDouble(*this).as.decimal > 0);
 
         return doubleVal(asDouble(*this).as.decimal / asDouble(other).as.decimal);
     }
 
     Value operator*(const Value other) const {
         if (this->isObject() && other.isNumber())
-            return multiplyObjects(asObject(*this), asNumber(other));
+            return multiplyObjects(
+                asObject(*this), asNumber(other));
 
 
         if (this->isNumber() && other.isObject())
-            return multiplyObjects(asNumber(*this), asObject(other));
+            return multiplyObjects(
+                asNumber(*this), asObject(other));
 
 
         if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
-            return doubleVal(asDouble(*this).as.decimal * asDouble(other).as.decimal);
+            return
+                doubleVal(asDouble(*this).as.decimal * asDouble(other).as.decimal);
 
 
         return integerVal(this->as.integer * other.as.integer);
@@ -347,51 +353,64 @@ struct Value {
 
     bool operator>(const Value other) const {
         if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
-            return asDouble(*this).as.decimal > asDouble(other).as.decimal;
-        else if (this->type == ValueType::INT && other.type == ValueType::INT)
-            return asInteger(*this).as.integer > asInteger(other).as.integer;
-        else
-            return false;
+            return
+                asDouble(*this).as.decimal > asDouble(other).as.decimal;
+
+        if (this->type == ValueType::INT && other.type == ValueType::INT)
+            return
+                asInteger(*this).as.integer > asInteger(other).as.integer;
+
+        return false;
     }
 
     bool operator<(const Value other) const {
         if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
-            return asDouble(*this).as.decimal < asDouble(other).as.decimal;
+            return
+                asDouble(*this).as.decimal < asDouble(other).as.decimal;
 
-        else if (this->type == ValueType::INT && other.type == ValueType::INT)
-            return asInteger(*this).as.integer < asInteger(other).as.integer;
-        else
-            return false;
+        if (this->type == ValueType::INT && other.type == ValueType::INT)
+            return
+                asInteger(*this).as.integer < asInteger(other).as.integer;
+
+        return false;
     }
 
     bool operator>=(const Value other) const {
         if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
-            return asDouble(*this).as.decimal >= asDouble(other).as.decimal;
-        else if (this->type == ValueType::INT && other.type == ValueType::INT)
-            return asInteger(*this).as.integer >= asInteger(other).as.integer;
-        else
-            return false;
+            return
+                asDouble(*this).as.decimal >= asDouble(other).as.decimal;
+
+        if (this->type == ValueType::INT && other.type == ValueType::INT)
+            return
+                asInteger(*this).as.integer >= asInteger(other).as.integer;
+
+        return false;
     }
 
     bool operator<=(const Value other) const {
         if (this->type == ValueType::DOUBLE || other.type == ValueType::DOUBLE)
-            return asDouble(*this).as.decimal <= asDouble(other).as.decimal;
-        else if (this->type == ValueType::INT && other.type == ValueType::INT)
-            return asInteger(*this).as.integer <= asInteger(other).as.integer;
-        else
-            return false;
+            return
+                asDouble(*this).as.decimal <= asDouble(other).as.decimal;
+
+        if (this->type == ValueType::INT && other.type == ValueType::INT)
+            return
+                asInteger(*this).as.integer <= asInteger(other).as.integer;
+
+        return false;
     }
 
     Value operator<<(const Value other) const {
         if (other.type == ValueType::INT && type == ValueType::INT)
-            return integerVal(as.integer << other.as.integer);
+            return integerVal(
+                as.integer << other.as.integer);
 
         return noneVal();
     }
 
     Value operator>>(const Value other) const {
         if (other.type == ValueType::INT && type == ValueType::INT)
-            return integerVal(as.integer >> other.as.integer);
+            return integerVal(
+                as.integer >> other.as.integer);
 
         return noneVal();
     }

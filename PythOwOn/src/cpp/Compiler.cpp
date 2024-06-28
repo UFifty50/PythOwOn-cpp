@@ -3,7 +3,6 @@
 #include <functional>
 #include <ranges>
 #include <string>
-#include <xutility>
 
 #include "Chunk.hpp"
 #include "Common.hpp"
@@ -446,6 +445,7 @@ void Compiler::switchStatement() {
                 declaration();
             }
             endScope();
+            if (match(TokenType::RBRACE)) advance();
         }
     }
 
@@ -552,7 +552,9 @@ void Compiler::continueStatement() {
     emitLoop(static_cast<uint16_t>(g_innermostLoopStart));
 }
 
-void Compiler::breakStatement() {}  // TODO: implement me
+void Compiler::breakStatement() {
+    consume(TokenType::SEMI, "Expected ';' after break.");
+}  // TODO: implement me
 
 void Compiler::statement() {
     if (match(TokenType::PRINT)) {

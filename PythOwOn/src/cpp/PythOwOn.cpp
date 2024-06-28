@@ -10,12 +10,14 @@
 #include "CompilationPileline.hpp"
 #include "VirtualMachine.hpp"
 
+using namespace std::string_literals;
+
 
 uint8_t printVersion();
 uint8_t repl();
 uint8_t runFile(std::string path);
 uint8_t compileFile(std::string path, std::string outFile);
-void signalHandler(int sigNum);
+[[noreturn]] void signalHandler(int sigNum);
 
 CompilationPipeline* g_compilationPipeline;
 
@@ -33,7 +35,8 @@ int main(const int argc, char** argv) {
     options.add_option("", {"file", "", cxxopts::value<std::string>()});
     options.add_option("", {"r,run", "Runs a given PythOwOn file."});
     options.add_option("", {"c,compile", "Compile a PythOwOn file into bytecode."});
-    options.add_option("", {"o,output", "Output file for compiled bytecode.",
+    options.add_option("", {"o,output",
+                            "Output file for compiled bytecode.",
                             cxxopts::value<std::string>()});
 
     options.add_option("", {"i,interpret", "Start PythOwOn in interactive mode"});
@@ -88,6 +91,7 @@ int main(const int argc, char** argv) {
     std::quick_exit(sigNum);
 }
 
+
 uint8_t printVersion() {
     FMT_PRINTLN("PythOwOn 0.0.1");
     return 0;
@@ -110,7 +114,7 @@ bool isIncomplete(std::string& line) {
     for (auto it = line.begin(); it != line.end(); ++it) {
         if (*it == '#') break;
         if (*it == '"') {
-            while (it + 1 != line.end() && *(it++) != '"') ++it;
+            while (it + 1 != line.end() && *it++ != '"') ++it;
             continue;
         }
         if (*it == '[') openBrackets++;
@@ -151,18 +155,8 @@ uint8_t repl() {
     }
 }
 
-uint8_t runFile(std::string path) {
-    const std::ifstream file(path);
-    if (!file.is_open()) {
-        FMT_PRINTLN("Could not open file \"{}\".", path);
-        return 74;
-    }
-
-    /*std::string magic;
-    file.read(magic.data(), 16);
-
-    bool isCompiled = magic == "POWON\0\0\0\0\0\0\0\0\0\0\0";*/
-
+uint8_t runInterpretedFile(std::ifstream& file) {
+    file.seekg(0, std::ifstream::beg);
     std::stringstream ss;
     ss << file.rdbuf();
     const std::string source = ss.str();
@@ -176,24 +170,131 @@ uint8_t runFile(std::string path) {
     if (result == InterpretResult::RUNTIME_ERROR) return 70;
 
     return 0;
+}
 
-    // if (isCompiled) {
-    //     // read 4 bytes for number of constants, 4 bytes for number of strings, 4 bytes
-    //     // for number of globals
-    //     uint32_t numConstants, numStrings, numGlobals;
-    //     file.read(reinterpret_cast<char*>(&numConstants), 4);
-    //     file.read(reinterpret_cast<char*>(&numStrings), 4);
-    //     file.read(reinterpret_cast<char*>(&numGlobals), 4);
-
-    //    // read constants
-    //    std::vector<Value> constants;
-    //    for (uint32_t i = 0; i < numConstants; i++) {
-    //        //     constants.push_back(Value::read(file));
-    //    }
-    //}
+uint8_t runCompiledFile(std::ifstream& file, const size_t fileLen,
+                        const std::string& fileName) {
+    // read 4 bytes for number of constants, 4 bytes for number line indices
+    auto* temp32 = new char[sizeof(uint32_t)];
+    auto* temp64 = new char[sizeof(size_t)];
+    auto* tempValue = new char[sizeof(Value)];
 
 
-    // CompilationPipeline* pipeline = new CompilationPipeline();
+    file.read(temp32, 4);
+    const uint32_t numLines = BEStrToLE<uint32_t>(temp32);
+    file.read(temp32, 4);
+    const uint32_t numConstants = BEStrToLE<uint32_t>(temp32);
+
+    // read line indices
+    std::vector<size_t> lines(numLines);
+    for (uint32_t i = 0; i < numLines; i++) {
+        file.read(temp64, sizeof(size_t));
+        lines[i] = BEStrToLE<size_t>(temp64);
+    }
+
+    // read constants
+    std::vector<Value> constants(numConstants);
+    for (uint32_t i = 0; i < numConstants; ++i) {
+        file.read(tempValue, sizeof(Value));
+        constants[i] = BEStrToLE<Value>(tempValue);
+    }
+
+    // read code
+    std::vector<uint8_t> code(fileLen - file.tellg());
+    for (auto& i : code) file.read(reinterpret_cast<char*>(&i), 1);
+
+
+    if (file.tellg() != fileLen) {
+        FMT_PRINTLN("File \"{}\" is not a valid PythOwOn compiled file.", fileName);
+        return 74;
+    }
+
+    const auto chunk = std::make_shared<Chunk>();
+    chunk->lines = std::move(lines);
+    chunk->code = std::move(code);
+    chunk->constants = std::move(constants);
+
+    VM::initVM();
+    VM::setChunk(chunk);
+    const InterpretResult result = VM::run();
+    VM::shutdownVM();
+
+    if (result == InterpretResult::RUNTIME_ERROR) return 70;
+
+    return 0;
+}
+
+uint8_t runFile(std::string path) {
+    std::ifstream file(path, std::ifstream::in | std::ifstream::binary);
+    if (!file.is_open()) {
+        FMT_PRINTLN("Could not open file \"{}\".", path);
+        return 74;
+    }
+
+    file.seekg(0, std::ifstream::end);
+    const size_t length = file.tellg();
+    file.seekg(0, std::ifstream::beg);
+
+    if (length < 20) {
+        FMT_PRINTLN("File \"{}\" is not a valid PythOwOn compiled file.", path);
+        return 74;
+    }
+
+    std::string magic(7, '\0');
+    file.read(magic.data(), 7);
+
+    return magic == "POWON\0\0"s
+               ? runCompiledFile(file, length, path)
+               : runInterpretedFile(file);
+}
+
+
+[[nodiscard]] static const char* ValueToBytes(const Value& value,
+                                              std::vector<std::string>& strTable) {
+    static uint8_t byteArray[sizeof(Value)];
+    byteArray[0] = static_cast<uint8_t>(value.type);
+
+    switch (value.type) {
+        case ValueType::NONE:
+            break;
+        case ValueType::INFINITY:
+        case ValueType::NAN:
+        case ValueType::BOOL:
+            byteArray[1] = value.as.boolean;
+            break;
+        case ValueType::INT: {
+            const char* integerBytes =
+                LEtoBEStr<decltype(value.as.integer)>(value.as.integer);
+            std::copy_n(integerBytes, sizeof(value.as.integer), &byteArray[1]);
+            break;
+        }
+        case ValueType::DOUBLE: {
+            const char* decimalBytes =
+                LEtoBEStr<decltype(value.as.decimal)>(value.as.decimal);
+            std::copy_n(decimalBytes, sizeof(value.as.decimal), &byteArray[1]);
+            break;
+        }
+        case ValueType::OBJECT: {
+            const Obj* object = value.as.obj;
+            switch (object->type) {
+                case ObjType::STRING:
+                    byteArray[1] = static_cast<uint8_t>(ObjType::STRING);
+                    strTable.push_back(object->asString()->str);
+                    byteArray[2] = static_cast<uint8_t>(strTable.size() - 1);
+                    break;
+
+                case ObjType::NONE:
+                default:
+                    break;
+            }
+        default:
+            break;
+        }
+    }
+}
+
+std::ostream& operator<<(std::ostream& os, const std::vector<Value>& value) {
+    
 }
 
 uint8_t compileFile(std::string path, std::string outFile) {
@@ -214,15 +315,22 @@ uint8_t compileFile(std::string path, std::string outFile) {
 
     if (result == InterpretResult::COMPILE_ERROR) return 65;
 
-    std::ofstream out(outFile);
+    std::ofstream out(outFile, std::ios::binary);
     if (!out.is_open()) {
         FMT_PRINTLN("Could not open file \"{}\".", outFile);
         return 74;
     }
 
-    /*out << chunk->lines;
+    uint32_t linesSize = static_cast<uint32_t>(chunk->lines.size());
+    uint32_t constantsSize = static_cast<uint32_t>(chunk->constants.size());
+
+    out << "POWON\0\0"s;
+    out.write(LEtoBEStr<uint32_t>(linesSize), sizeof(uint32_t));
+    out.write(LEtoBEStr<uint32_t>(constantsSize), sizeof(uint32_t));
+    out << chunk->lines;
+    out << chunk->constants;
     out << chunk->code;
-    out << chunk->constants;*/
+    out.flush();
     out.close();
 
     return 0;

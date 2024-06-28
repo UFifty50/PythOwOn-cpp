@@ -1,6 +1,10 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
+#include <bit>
+#include <ostream>
+#include <vector>
+
 #include "fmt/core.h"
 
 #undef INFINITY
@@ -23,17 +27,64 @@ concept Printable = requires(std::ostream& os, const T& t) { os << t; };
 template <typename... Ts>
 concept AllPrintable = (Printable<Ts> && ...);
 
-
 using ssize_t = intmax_t;
 
+
+///
+///@brief Function template to convert an LE value of type T to a BE byte array
+///@tparam T The type of the value to convert
+///@param value The value to convert
+///@return A pointer to the byte array
+///
+template <typename T>
+[[nodiscard]] const char* LEtoBEStr(const T& value) {
+    static char byteArray[sizeof(T)];
+
+    const auto* valueBytes = reinterpret_cast<const uint8_t*>(&value);
+
+    for (size_t i = 0; i < sizeof(T); ++i) {
+        byteArray[i] = valueBytes[sizeof(T) - 1 - i];
+    }
+
+    return byteArray;
+}
+
+/// \brief Function template to convert a BE byte array to an LE value of type T
+/// \tparam T The type of the value to convert to
+/// \param byteArray The BE byte array to convert
+/// \return The converted LE value
+template <typename T>
+[[nodiscard]] T BEStrToLE(const char* byteArray) {
+    T value;
+
+    // PTR to the raw bytes of `value`
+    auto* valueBytes = reinterpret_cast<uint8_t*>(&value);
+
+    for (size_t i = 0; i < sizeof(T); ++i) {
+        valueBytes[sizeof(T) - 1 - i] = static_cast<uint8_t>(byteArray[i]);
+    }
+
+    return value;
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os,
+                         const std::vector<T>& vec) {
+    using Type = std::remove_cvref_t<T>;
+    for (auto& elem : vec) os.write(LEtoBEStr<Type>(elem), sizeof(Type));
+
+    return os;
+}
 
 class InterpretResult {
 public:
     enum Result : uint8_t { OK, COMPILE_ERROR, RUNTIME_ERROR };
+
     enum Cause : uint8_t { NONE, UNTERMINATED };
 
     InterpretResult() = default;
     constexpr InterpretResult(const Result result) : result(result), cause(NONE) {}
+
     constexpr InterpretResult(const Result result, const Cause cause)
         : result(result), cause(cause) {}
 
@@ -59,7 +110,7 @@ public:
 
 private:
     Result result;
-    Cause cause;  // NOLINT(clang-diagnostic-unused-private-field)
+    Cause cause; // NOLINT(clang-diagnostic-unused-private-field)
 };
 
 class TokenType {
@@ -102,7 +153,7 @@ public:
         STR,
         NUM,
         INF,
-        NAN,  // TODO: implement inf/NaN
+        NAN, // TODO: implement inf/NaN
 
         // keywords
         AND,
@@ -115,7 +166,7 @@ public:
         DEF,
         IF,
         NONE,
-        PRINT,  // TODO: implement print in standard library instead of here
+        PRINT, // TODO: implement print in standard library instead of here
         RETURN,
         SUPER,
         THIS,

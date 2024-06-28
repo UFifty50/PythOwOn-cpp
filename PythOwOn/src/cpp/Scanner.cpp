@@ -360,7 +360,7 @@ Token Scanner::scanToken() {
                                           : TokenType::LESS);
 
         case '"':
-            return (peek(0) == '"' && peek(1) == '"') ? multiString() : string();
+            return peek(0) == '"' && peek(1) == '"' ? multiString() : string();
 
         default:
             return errorToken(FMT_FORMAT("Unexpected character: {}.", c));

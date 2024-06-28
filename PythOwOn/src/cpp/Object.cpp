@@ -1,7 +1,7 @@
 #include "Object.hpp"
 
-#include "VirtualMachine.hpp"
 #include "Value.hpp"
+#include "VirtualMachine.hpp"
 
 
 bool Obj::operator==(const Obj& other) const {
@@ -32,19 +32,24 @@ std::ostream& Obj::operator<<(std::ostream& os) const {
 }
 
 
-ObjString* ObjString::create(const std::string& str) {
+const ObjString* ObjString::create(const std::string& str) {
+    if (VM::hasString(str)) return VM::getString(str);
+
     auto* string = VM::newObject<ObjString>(ObjType::STRING);
     string->object.type = ObjType::STRING;
     string->str = str;
-    VM::addString(string, Value::noneVal());
+    VM::addString(string);
     return string;
 }
 
-ObjString* ObjString::create(const std::string& str, std::tuple<int32_t, int32_t> slice) {
+const ObjString* ObjString::create(const std::string& newStr,
+                                   std::tuple<int32_t, int32_t> slice) {
     if (std::get<0>(slice) < 0)
-        std::get<0>(slice) = static_cast<signed>(str.size()) + std::get<0>(slice) - 1;
+        std::get<0>(slice) =
+            static_cast<signed>(newStr.size()) + std::get<0>(slice) - 1;
     if (std::get<1>(slice) < 0)
-        std::get<1>(slice) = static_cast<signed>(str.size()) + std::get<1>(slice) - 1;
+        std::get<1>(slice) =
+            static_cast<signed>(newStr.size()) + std::get<1>(slice) - 1;
 
-    return create(str.substr(std::get<0>(slice), std::get<1>(slice)));
+    return create(newStr.substr(std::get<0>(slice), std::get<1>(slice)));
 }

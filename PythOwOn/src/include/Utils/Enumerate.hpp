@@ -16,6 +16,11 @@ public:
           enumerationBegin(std::begin(iter)),
           enumerationEnd(std::end(iter)),
           isReversed(reversed) {
+        if (enumerationIterable.empty()) {
+            isFinished = true;
+            return;
+        }
+
         if (reversed) {
             index = std::distance(enumerationBegin, enumerationEnd) - 1;
             enumerationBegin = enumerationEnd - 1;
@@ -30,10 +35,12 @@ public:
     const EnumerateIterable& end() const { return *this; }
 
     bool operator!=(const EnumerateIterable&) const {
+        if (isFinished) return false;
         return isReversed ? !isFinished : enumerationBegin != enumerationEnd;
     }
 
     void operator++() {
+        if (isFinished) return;
         if (isReversed) {
             if (enumerationBegin == std::begin(enumerationIterable)) {
                 isFinished = true;

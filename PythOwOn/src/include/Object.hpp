@@ -2,10 +2,11 @@
 #define OBJECT_HPP
 
 #include <stdint.h>
+
+#include <cstddef>
 #include <ostream>
 #include <string>
 #include <tuple>
-#include <cstddef>
 #include <type_traits>
 #include <xstring>
 
@@ -21,6 +22,7 @@ struct Obj {
     ObjType type;
 
     static ObjType typeOf(const Obj* obj) { return obj->type; }
+
     [[nodiscard]] const ObjString* asString() const {
         return reinterpret_cast<const ObjString*>(this);
     }
@@ -33,8 +35,9 @@ struct ObjString {
     Obj object;
     std::string str;
 
-    static ObjString* create(const std::string& str);
-    static ObjString* create(const std::string& str, std::tuple<int32_t, int32_t> slice);
+    static const ObjString* create(const std::string& str);
+    static const ObjString* create(const std::string& str,
+                                   std::tuple<int32_t, int32_t> slice);
 
     bool operator==(const ObjString& other) const;
 };
