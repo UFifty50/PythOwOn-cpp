@@ -268,9 +268,6 @@ uint8_t runCompiledFile(std::ifstream& file, const size_t fileLen,
         return 74;
     }
 
-    delete[] temp32;
-    delete[] temp64;
-
     const auto chunk = std::make_shared<Chunk>();
     chunk->lines = std::move(lines);
     chunk->constants = std::move(constants);

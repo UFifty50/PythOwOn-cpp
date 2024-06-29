@@ -166,7 +166,7 @@ struct Value {
         return false;
     }
 
-    static Value addObjects(const Obj* a, const Obj* b) {
+    static Value AddObjects(const Obj* a, const Obj* b) {
         if (Obj::TypeOf(a) != Obj::TypeOf(b)) return NoneVal();
 
         switch (Obj::TypeOf(a)) {
@@ -186,7 +186,7 @@ struct Value {
         if constexpr (std::is_same_v<A, Obj*> && std::is_same_v<B, Value>) {
             if (b.isNumber()) {
                 std::string str;
-                for (ssize_t i = 0; i < asInteger(b).as.integer; i
+                for (ssize_t i = 0; i < AsInteger(b).as.integer; i
                      ++)
                     str += a->asString()->str;
                 return ObjectVal(ObjString::Create(str));
@@ -195,7 +195,7 @@ struct Value {
         else if constexpr (std::is_same_v<A, Value> && std::is_same_v<B, Obj*>) {
             if (a.isNumber()) {
                 std::string str;
-                for (ssize_t i = 0; i < asInteger(a).as.integer; i
+                for (ssize_t i = 0; i < AsInteger(a).as.integer; i
                      ++)
                     str += b->asString()->str;
                 return ObjectVal(ObjString::Create(str));
@@ -239,14 +239,14 @@ struct Value {
     Value operator+(const Value other) const {
         switch (this->type) {
             case ValueType::OBJECT: switch (other.type) {
-                    case ValueType::OBJECT: return addObjects(AsObject(*this), AsObject(other));
+                    case ValueType::OBJECT: return AddObjects(AsObject(*this), AsObject(other));
 
                     case ValueType::INT:
                     case ValueType::DOUBLE:
                     case ValueType::BOOL:
                     case ValueType::INFINITY:
                     case ValueType::NAN:
-                    case ValueType::NONE: return addObjects(AsObject(*this), ToObjStringObj(other));
+                    case ValueType::NONE: return AddObjects(AsObject(*this), ToObjStringObj(other));
                 }
                 break;
 
@@ -254,7 +254,7 @@ struct Value {
                     case ValueType::DOUBLE: return DoubleVal(this->as.decimal + other.as.decimal);
                     case ValueType::INT: return DoubleVal(
                             this->as.decimal + AsDouble(other).as.decimal);
-                    case ValueType::OBJECT: return addObjects(
+                    case ValueType::OBJECT: return AddObjects(
                             ToObjStringObj(*this), AsObject(other));
                     case ValueType::INFINITY: return Infinity(this->as.boolean);
                     case ValueType::NAN: return Nan(this->as.boolean);
@@ -267,7 +267,7 @@ struct Value {
                     case ValueType::INT: return IntegerVal(this->as.integer + other.as.integer);
                     case ValueType::DOUBLE: return DoubleVal(
                             AsDouble(*this).as.decimal + other.as.decimal);
-                    case ValueType::OBJECT: return addObjects(
+                    case ValueType::OBJECT: return AddObjects(
                             ToObjStringObj(*this), AsObject(other));
                     case ValueType::INFINITY: return Infinity(this->as.boolean);
                     case ValueType::NAN: return Nan(this->as.boolean);
@@ -284,7 +284,7 @@ struct Value {
                     case ValueType::BOOL: return BoolVal(this->as.boolean || other.as.boolean);
                     case ValueType::INT: return IntegerVal(this->as.boolean + other.as.integer);
                     case ValueType::DOUBLE: return DoubleVal(this->as.boolean + other.as.decimal);
-                    case ValueType::OBJECT: return addObjects(
+                    case ValueType::OBJECT: return AddObjects(
                             ToObjStringObj(*this), AsObject(other));
                     case ValueType::INFINITY: return Infinity(this->as.boolean);
                     case ValueType::NAN: return Nan(this->as.boolean);

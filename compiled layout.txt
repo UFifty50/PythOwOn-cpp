@@ -9,3 +9,16 @@ constants (variable size)
 strings (variable size)
 line indices (sizeof(uint32_t) * number of line indices)
 code (rest of the file)
+
+
+
+
+
+=== Value Layout ===
+byte [0] type
+
+     [1] bool
+     [1] objType
+     [1-8] int
+
+     [2-5] strTableIndex

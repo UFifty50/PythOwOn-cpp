@@ -1,6 +1,7 @@
 #ifndef VM_HPP
 #define VM_HPP
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -30,38 +31,38 @@ public:
 
     static State VMstate;
 
-    VM() { initVM(); }
-    ~VM() { shutdownVM(); }
+    VM() { InitVM(); }
+    ~VM() { ShutdownVM(); }
 
     VM(const VM&) = delete;
     VM& operator=(const VM&) = delete;
     VM(VM&&) = delete;
     VM& operator=(VM&&) = delete;
 
-    static void initVM();
-    static void shutdownVM();
+    static void InitVM();
+    static void ShutdownVM();
 
-    static uint8_t readByte() { return *VMstate.ip++; }
+    static uint8_t ReadByte() { return *VMstate.ip++; }
 
-    static uint16_t readShort() {
-        uint16_t value = static_cast<uint16_t>(readByte() << 8);
-        value |= readByte();
+    static uint16_t ReadShort() {
+        uint16_t value = static_cast<uint16_t>(ReadByte() << 8);
+        value |= ReadByte();
         return value;
     }
 
-    static uint32_t readLong() {
-        uint32_t value = readByte() << 24;
-        value |= readByte() << 16;
-        value |= readByte() << 8;
-        value |= readByte();
+    static uint32_t ReadLong() {
+        uint32_t value = ReadByte() << 24;
+        value |= ReadByte() << 16;
+        value |= ReadByte() << 8;
+        value |= ReadByte();
         return value;
     }
 
-    static Value readConstant() { return VMstate.chunk->constants[readByte()]; }
-    static Value readConstantLong() { return VMstate.chunk->constants[readLong()]; }
+    static Value ReadConstant() { return VMstate.chunk->constants[ReadByte()]; }
+    static Value ReadConstantLong() { return VMstate.chunk->constants[ReadLong()]; }
 
     template <typename O>
-    static O* newObject(const ObjType type) {
+    static O* NewObject(const ObjType type) {
         auto* object = reinterpret_cast<Obj*>(new O());
         object->type = type;
 
@@ -70,30 +71,31 @@ public:
         return reinterpret_cast<O*>(object);
     }
 
-    static void addString(const ObjString* string) { VMstate.strings.emplace(*string); }
+    static void AddString(const ObjString* string) { VMstate.strings.emplace(*string); }
 
-    static bool hasString(const ObjString* string) { return VMstate.strings.contains(*string); }
+    static bool HasString(const ObjString* string) { return VMstate.strings.contains(*string); }
 
-    static bool hasString(const std::string& string) {
-        for (const auto& [obj, str] : VMstate.strings) { if (str == string) return true; }
-        return false;
+    static bool HasString(const std::string& string) {
+        return std::ranges::any_of(VMstate.strings, [&string](const auto& objStr) {
+            return objStr.str == string;
+        });
     }
 
-    static const ObjString* getString(const std::string& string) {
+    static const ObjString* GetString(const std::string& string) {
         for (const auto& objStr : VMstate.strings) { if (objStr.str == string) return &objStr; }
         return nullptr;
     }
 
-    static void defineGlobal(const ObjString* name, const Value& value) {
+    static void DefineGlobal(const ObjString* name, const Value& value) {
         VMstate.globals[*name] = value;
     }
 
-    static void setChunk(const std::shared_ptr<Chunk>& chunk);
+    static void SetChunk(const std::shared_ptr<Chunk>& chunk);
     // Chunk* getChunk();
-    static InterpretResult run();
+    static InterpretResult Run();
 
     template <AllPrintable... Ts>
-    static void runtimeError(const std::string& message, Ts... args);
+    static void RuntimeError(const std::string& message, Ts... args);
 
     /// <summary>
     /// Performs a binary operation on the stack.
@@ -105,7 +107,7 @@ public:
     /// for the specified binary operation.</param>
     /// <returns>RUNTIME_ERROR if an error occurred, otherwise nullopt.</returns>
     template <typename Op>
-    static std::optional<InterpretResult> binaryOp(
+    static std::optional<InterpretResult> BinaryOp(
         const std::function<InterpretResult()>& verifyFn) {
         if (verifyFn() != InterpretResult::OK) return InterpretResult::RUNTIME_ERROR;
 
@@ -113,13 +115,13 @@ public:
         Value a = VMstate.stack.pop();
 
         if constexpr (auto val = Op{}(a, b); std::is_same_v<
-            decltype(val), bool>) { VMstate.stack.push(Value::boolVal(val)); }
+            decltype(val), bool>) { VMstate.stack.push(Value::BoolVal(val)); }
         else if
         constexpr (std::is_same_v<decltype(val), std::string>) {
-            VMstate.stack.push(Value::objectVal(ObjString::Create(val)));
+            VMstate.stack.push(Value::ObjectVal(ObjString::Create(val)));
         }
         else if constexpr (std::is_same_v<decltype(val), Obj*>) {
-            VMstate.stack.push(Value::objectVal(val));
+            VMstate.stack.push(Value::ObjectVal(val));
         }
         else if constexpr (std::is_same_v<decltype(val), Value>) { VMstate.stack.push(val); }
         else { FMT_PRINT("Unknown type, type was {}.\n", typeid(val).name()); }
@@ -128,11 +130,11 @@ public:
     }
 
 private:
-    static InterpretResult digitChecker();
-    static InterpretResult integerChecker();
-    static InterpretResult stringChecker();
-    static InterpretResult addableChecker();
-    static InterpretResult multiplicableChecker();
+    static InterpretResult DigitChecker();
+    static InterpretResult IntegerChecker();
+    static InterpretResult StringChecker();
+    static InterpretResult AddableChecker();
+    static InterpretResult MultiplicableChecker();
 };
 
 #endif

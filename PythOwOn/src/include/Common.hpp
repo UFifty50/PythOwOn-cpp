@@ -42,9 +42,7 @@ template <typename T>
 
     const auto* valueBytes = reinterpret_cast<const uint8_t*>(&value);
 
-    for (size_t i = 0; i < sizeof(T); ++i) {
-        byteArray[i] = valueBytes[sizeof(T) - 1 - i];
-    }
+    for (size_t i = 0; i < sizeof(T); ++i) { byteArray[i] = valueBytes[sizeof(T) - 1 - i]; }
 
     return byteArray;
 }
@@ -70,8 +68,7 @@ template <typename T>
 template <typename T>
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<T>& vec) {
-    using Type = std::remove_cvref_t<T>;
-    for (auto& elem : vec) os.write(LEtoBEStr<Type>(elem), sizeof(Type));
+    for (auto& elem : vec) os.write(LEtoBEStr<T>(elem), sizeof(T));
 
     return os;
 }
@@ -93,14 +90,10 @@ public:
 
     [[nodiscard]] constexpr std::string toString() const {
         switch (result) {
-            case OK:
-                return "OK";
-            case RUNTIME_ERROR:
-                return "RUNTIME_ERROR";
-            case COMPILE_ERROR:
-                return "COMPILE_ERROR";
-            default:
-                return "UNKNOWN";
+            case OK: return "OK";
+            case RUNTIME_ERROR: return "RUNTIME_ERROR";
+            case COMPILE_ERROR: return "COMPILE_ERROR";
+            default: return "UNKNOWN";
         }
     }
 
@@ -213,9 +206,7 @@ struct lshift {
     using _SECOND_ARGUMENT_TYPE_NAME _CXX17_DEPRECATE_ADAPTOR_TYPEDEFS = T;
     using _RESULT_TYPE_NAME _CXX17_DEPRECATE_ADAPTOR_TYPEDEFS = T;
 
-    _NODISCARD constexpr T operator()(const T& left, const T& right) const {
-        return left << right;
-    }
+    _NODISCARD constexpr T operator()(const T& left, const T& right) const { return left << right; }
 };
 
 // ReSharper disable once CppInconsistentNaming
@@ -225,9 +216,7 @@ struct rshift {
     using _SECOND_ARGUMENT_TYPE_NAME _CXX17_DEPRECATE_ADAPTOR_TYPEDEFS = T;
     using _RESULT_TYPE_NAME _CXX17_DEPRECATE_ADAPTOR_TYPEDEFS = T;
 
-    _NODISCARD constexpr T operator()(const T& left, const T& right) const {
-        return left >> right;
-    }
+    _NODISCARD constexpr T operator()(const T& left, const T& right) const { return left >> right; }
 };
 
 template <typename T = float>

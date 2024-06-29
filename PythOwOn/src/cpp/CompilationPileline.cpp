@@ -9,8 +9,8 @@
 InterpretResult CompilationPipeline::interpret(const std::string& source) {
     auto [result, chunk] = compile(source);
     if (result == InterpretResult::OK) {
-        VM::setChunk(chunk);
-        return VM::run();
+        VM::SetChunk(chunk);
+        return VM::Run();
     }
 
     return result;
@@ -21,14 +21,12 @@ std::pair<InterpretResult, std::shared_ptr<Chunk>> CompilationPipeline::compile(
     auto chunk = std::make_shared<Chunk>();
     compiler = std::make_unique<Compiler>(chunk);
 
-    if (!compiler->compile(source)) {
-        return {InterpretResult::COMPILE_ERROR, nullptr};
-    }
+    if (!compiler->compile(source)) { return {InterpretResult::COMPILE_ERROR, nullptr}; }
 
     return {InterpretResult::OK, chunk};
 }
 
 InterpretResult CompilationPipeline::runCompiled(const std::shared_ptr<Chunk>& chunk) {
-    VM::setChunk(chunk);
-    return VM::run();
+    VM::SetChunk(chunk);
+    return VM::Run();
 }

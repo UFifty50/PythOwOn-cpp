@@ -29,11 +29,11 @@ std::ostream& Obj::operator<<(std::ostream& os) const {
 
 
 const ObjString* ObjString::Create(const std::string& newStr) {
-    if (VM::hasString(newStr)) return VM::getString(newStr);
+    if (VM::HasString(newStr)) return VM::GetString(newStr);
 
-    auto* string = VM::newObject<ObjString>(ObjType::STRING);
+    auto* string = VM::NewObject<ObjString>(ObjType::STRING);
     string->str = newStr;
-    VM::addString(string);
+    VM::AddString(string);
     return string;
 }
 

@@ -12,15 +12,15 @@
 VM::State VM::VMstate;
 
 
-void VM::initVM() {
+void VM::InitVM() {
     VMstate.stack = Stack<Value>();
-    VMstate.strings = std::unordered_map<ObjString, Value>();
+    VMstate.strings = std::unordered_set<ObjString>();
     VMstate.globals = std::unordered_map<ObjString, Value>();
     VMstate.objects = LinkedList::Single<Obj*>();
     VMstate.ip = nullptr;
 }
 
-void VM::shutdownVM() {
+void VM::ShutdownVM() {
     VMstate.chunk.reset();
     VMstate.stack.reset();
     VMstate.objects.clear();
@@ -29,7 +29,7 @@ void VM::shutdownVM() {
     VMstate.ip = nullptr;
 }
 
-void VM::setChunk(const std::shared_ptr<Chunk>& chunk) {
+void VM::SetChunk(const std::shared_ptr<Chunk>& chunk) {
     VMstate.chunk = chunk;
     VMstate.ip = chunk->code.data();
 }
@@ -37,7 +37,7 @@ void VM::setChunk(const std::shared_ptr<Chunk>& chunk) {
 // Chunk* VM::getChunk() { return chunk; }
 
 template <AllPrintable... Ts>
-void VM::runtimeError(const std::string& message, Ts... args) {
+void VM::RuntimeError(const std::string& message, Ts... args) {
     FMT_PRINT(message + "\n", args...);
 
     const uint8_t instructionIdx =
@@ -47,7 +47,7 @@ void VM::runtimeError(const std::string& message, Ts... args) {
     VMstate.stack.reset();
 }
 
-InterpretResult VM::run() {
+InterpretResult VM::Run() {
     while (true) {
 #if defined(TRACE_EXECUTION)
         FMT_PRINT("          ");
@@ -62,9 +62,9 @@ InterpretResult VM::run() {
             static_cast<size_t>(VMstate.ip - VMstate.chunk->code.data()));
 #endif
 
-        switch (readByte()) {
+        switch (ReadByte()) {
             case OpCode::CONSTANT: {
-                Value constant = readConstant();
+                Value constant = ReadConstant();
                 VMstate.stack.push(constant);
                 break;
             }
@@ -79,33 +79,33 @@ InterpretResult VM::run() {
                 break;
 
             case OpCode::GET_LOCAL: {
-                uint8_t slot = readByte();
+                uint8_t slot = ReadByte();
                 VMstate.stack.push(VMstate.stack[slot]);
                 break;
             }
 
             case OpCode::GET_LOCAL_LONG: {
-                uint32_t slot = readLong();
+                uint32_t slot = ReadLong();
                 VMstate.stack.push(VMstate.stack[slot]);
                 break;
             }
 
             case OpCode::SET_LOCAL: {
-                uint8_t slot = readByte();
+                uint8_t slot = ReadByte();
                 VMstate.stack[slot] = VMstate.stack.peek(0);
                 break;
             }
 
             case OpCode::SET_LOCAL_LONG: {
-                uint32_t slot = readLong();
+                uint32_t slot = ReadLong();
                 VMstate.stack[slot] = VMstate.stack.peek(0);
                 break;
             }
 
             case OpCode::GET_GLOBAL: {
-                const ObjString* name = Value::AsObject(readConstant())->asString();
+                const ObjString* name = Value::AsObject(ReadConstant())->asString();
                 if (!VMstate.globals.contains(*name)) {
-                    runtimeError("Undefined variable '{}'.", name->str);
+                    RuntimeError("Undefined variable '{}'.", name->str);
                     return InterpretResult::RUNTIME_ERROR;
                 }
 
@@ -114,9 +114,9 @@ InterpretResult VM::run() {
             }
 
             case OpCode::GET_GLOBAL_LONG: {
-                const ObjString* name = Value::AsObject(readConstantLong())->asString();
+                const ObjString* name = Value::AsObject(ReadConstantLong())->asString();
                 if (!VMstate.globals.contains(*name)) {
-                    runtimeError("Undefined variable '{}'.", name->str);
+                    RuntimeError("Undefined variable '{}'.", name->str);
                     return InterpretResult::RUNTIME_ERROR;
                 }
 
@@ -125,9 +125,9 @@ InterpretResult VM::run() {
             }
 
             case OpCode::SET_GLOBAL: {
-                const ObjString* name = Value::AsObject(readConstant())->asString();
+                const ObjString* name = Value::AsObject(ReadConstant())->asString();
                 if (!VMstate.globals.contains(*name)) {
-                    runtimeError("Undefined variable '{}'.", name->str);
+                    RuntimeError("Undefined variable '{}'.", name->str);
                     return InterpretResult::RUNTIME_ERROR;
                 }
 
@@ -136,9 +136,9 @@ InterpretResult VM::run() {
             }
 
             case OpCode::SET_GLOBAL_LONG: {
-                const ObjString* name = Value::AsObject(readConstantLong())->asString();
+                const ObjString* name = Value::AsObject(ReadConstantLong())->asString();
                 if (!VMstate.globals.contains(*name)) {
-                    runtimeError("Undefined variable '{}'.", name->str);
+                    RuntimeError("Undefined variable '{}'.", name->str);
                     return InterpretResult::RUNTIME_ERROR;
                 }
 
@@ -147,21 +147,21 @@ InterpretResult VM::run() {
             }
 
             case OpCode::DEF_GLOBAL: {
-                const ObjString* name = Value::AsObject(readConstant())->asString();
-                defineGlobal(name, VMstate.stack.pop());
+                const ObjString* name = Value::AsObject(ReadConstant())->asString();
+                DefineGlobal(name, VMstate.stack.pop());
                 break;
             }
 
             case OpCode::DEF_GLOBAL_LONG: {
-                const ObjString* name = Value::AsObject(readConstantLong())->asString();
-                defineGlobal(name, VMstate.stack.pop());
+                const ObjString* name = Value::AsObject(ReadConstantLong())->asString();
+                DefineGlobal(name, VMstate.stack.pop());
                 break;
             }
 
             case OpCode::NONE: VMstate.stack.push(Value::NoneVal());
                 break;
 
-            case OpCode::CONSTANT_LONG: Value constant = readConstantLong();
+            case OpCode::CONSTANT_LONG: Value constant = ReadConstantLong();
                 VMstate.stack.push(constant);
                 break;
 
@@ -173,28 +173,28 @@ InterpretResult VM::run() {
                 VMstate.stack.push(Value::BoolVal(secondVal.isEqualTo(firstVal)));
                 break;
 
-            case OpCode::GREATER: if (auto a = binaryOp<std::greater<
-                    Value>>(&VM::digitChecker))
+            case OpCode::GREATER: if (auto a = BinaryOp<std::greater<
+                    Value>>(&VM::DigitChecker))
                     return a.value();
                 break;
 
-            case OpCode::LESS: if (auto a = binaryOp<std::less<Value>>(&VM::digitChecker))
+            case OpCode::LESS: if (auto a = BinaryOp<std::less<Value>>(&VM::DigitChecker))
                     return a.
                         value();
                 break;
 
-            case OpCode::ADD: if (auto a = binaryOp<std::plus<Value>>(&VM::addableChecker))
+            case OpCode::ADD: if (auto a = BinaryOp<std::plus<Value>>(&VM::AddableChecker))
                     return a
                         .value();
                 break;
 
-            case OpCode::MULTIPLY: if (auto a = binaryOp<std::multiplies<Value>>(
-                    &VM::multiplicableChecker))
+            case OpCode::MULTIPLY: if (auto a = BinaryOp<std::multiplies<Value>>(
+                    &VM::MultiplicableChecker))
                     return a.value();
                 break;
 
-            case OpCode::DIVIDE: if (auto a = binaryOp<std::divides<
-                    Value>>(&VM::digitChecker))
+            case OpCode::DIVIDE: if (auto a = BinaryOp<std::divides<
+                    Value>>(&VM::DigitChecker))
                     return a.value();
                 break;
 
@@ -204,7 +204,7 @@ InterpretResult VM::run() {
             case OpCode::NEGATE: {
                 if (!VMstate.stack.peek(0).isNumber() &&
                     !VMstate.stack.peek(0).isSpecialNumber()) {
-                    runtimeError("Operand must be a number.");
+                    RuntimeError("Operand must be a number.");
                     return InterpretResult::RUNTIME_ERROR;
                 }
 
@@ -221,18 +221,18 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::LEFTSHIFT: if (auto a = binaryOp<lshift<
-                    Value>>(&VM::integerChecker))
+            case OpCode::LEFTSHIFT: if (auto a = BinaryOp<lshift<
+                    Value>>(&VM::IntegerChecker))
                     return a.value();
                 break;
 
-            case OpCode::RIGHTSHIFT: if (auto a = binaryOp<rshift<
-                    Value>>(&VM::integerChecker))
+            case OpCode::RIGHTSHIFT: if (auto a = BinaryOp<rshift<
+                    Value>>(&VM::IntegerChecker))
                     return a.value();
                 break;
 
-            case OpCode::MODULO: if (auto a = binaryOp<std::modulus<
-                    Value>>(&VM::digitChecker))
+            case OpCode::MODULO: if (auto a = BinaryOp<std::modulus<
+                    Value>>(&VM::DigitChecker))
                     return a.value();
                 break;
 
@@ -243,19 +243,19 @@ InterpretResult VM::run() {
             }
 
             case OpCode::JUMP: {
-                uint16_t offset = readShort();
+                uint16_t offset = ReadShort();
                 VMstate.ip += offset;
                 break;
             }
 
             case OpCode::JUMP_FALSE: {
-                uint16_t offset = readShort();
+                uint16_t offset = ReadShort();
                 if (VMstate.stack.peek(0).isFalsey()) VMstate.ip += offset;
                 break;
             }
 
             case OpCode::LOOP: {
-                uint32_t offset = readShort();
+                uint32_t offset = ReadShort();
                 VMstate.ip -= offset;
                 break;
             }
@@ -271,48 +271,48 @@ InterpretResult VM::run() {
     }
 }
 
-InterpretResult VM::digitChecker() {
+InterpretResult VM::DigitChecker() {
     if (!VMstate.stack.peek(0).isNumber() || !VMstate.stack.peek(1).isNumber()) {
-        runtimeError("Operands must be numbers.");
+        RuntimeError("Operands must be numbers.");
         return InterpretResult::RUNTIME_ERROR;
     }
     return InterpretResult::OK;
 }
 
-InterpretResult VM::integerChecker() {
+InterpretResult VM::IntegerChecker() {
     if (!VMstate.stack.peek(0).isInteger() || !VMstate.stack.peek(1).isInteger()) {
-        runtimeError("Operands must be integers.");
+        RuntimeError("Operands must be integers.");
         return InterpretResult::RUNTIME_ERROR;
     }
     return InterpretResult::OK;
 }
 
-InterpretResult VM::stringChecker() {
+InterpretResult VM::StringChecker() {
     if (!VMstate.stack.peek(0).isObjectType(ObjType::STRING) ||
         !VMstate.stack.peek(1).isObjectType(ObjType::STRING)) {
-        runtimeError("Operands must be strings.");
+        RuntimeError("Operands must be strings.");
         return InterpretResult::RUNTIME_ERROR;
     }
     return InterpretResult::OK;
 }
 
-InterpretResult VM::addableChecker() {
+InterpretResult VM::AddableChecker() {
     if ((VMstate.stack.peek(0).isNumber() ||
             VMstate.stack.peek(0).isObjectType(ObjType::STRING)) &&
         (VMstate.stack.peek(1).isNumber() ||
             VMstate.stack.peek(1).isObjectType(ObjType::STRING))) { return InterpretResult::OK; }
 
-    runtimeError("Can only add numbers or strings.");
+    RuntimeError("Can only add numbers or strings.");
     return InterpretResult::RUNTIME_ERROR;
 }
 
-InterpretResult VM::multiplicableChecker() {
+InterpretResult VM::MultiplicableChecker() {
     if ((VMstate.stack.peek(0).isNumber() && VMstate.stack.peek(1).isNumber()) ||
         (VMstate.stack.peek(0).isNumber() &&
             VMstate.stack.peek(1).isObjectType(ObjType::STRING)) ||
         (VMstate.stack.peek(0).isObjectType(ObjType::STRING) &&
             VMstate.stack.peek(1).isNumber())) { return InterpretResult::OK; }
 
-    runtimeError("Can only multiply numbers.");
+    RuntimeError("Can only multiply numbers.");
     return InterpretResult::RUNTIME_ERROR;
 }
