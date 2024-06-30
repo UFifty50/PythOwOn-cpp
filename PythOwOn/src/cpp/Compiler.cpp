@@ -36,10 +36,11 @@ Compiler::Compiler() : chunk(g_defaultRef<Chunk>), scanner(Scanner("")), parser(
     rules[TokenType::COMMA]      = { nullptr,              nullptr,             Precedence::NONE       };
     rules[TokenType::DOT]        = { nullptr,              nullptr,             Precedence::NONE       };
     rules[TokenType::MINUS]      = { &Compiler::unary,     &Compiler::binary,   Precedence::TERM       };
-    rules[TokenType::MINUSMINUS] = { &Compiler::unary,     &Compiler::unary,    Precedence::TERM       };
+    rules[TokenType::MINUSMINUS] = { &Compiler::unary,     &Compiler::unaryInfix,     Precedence::CALL       };
     rules[TokenType::MINUS_EQ]   = { nullptr,              &Compiler::binary,   Precedence::ASSIGNMENT };
     rules[TokenType::PLUS]       = { &Compiler::unary,     &Compiler::binary,   Precedence::TERM       };
-    rules[TokenType::PLUSPLUS]   = { &Compiler::unary,     &Compiler::unary,    Precedence::TERM       };
+    rules[TokenType::PLUSPLUS]   = { &Compiler::unary,     &Compiler::unaryInfix,     Precedence::CALL       };
+    rules[TokenType::PLUS_EQ]    = { nullptr,              &Compiler::binary,   Precedence::ASSIGNMENT };
     rules[TokenType::PERCENT]    = { nullptr,              &Compiler::binary,   Precedence::FACTOR     };
     rules[TokenType::SEMI]       = { nullptr,              nullptr,             Precedence::NONE       };
     rules[TokenType::SLASH]      = { nullptr,              &Compiler::binary,   Precedence::FACTOR     };
@@ -650,47 +651,67 @@ void Compiler::unary(bool) {
     // @formatter:on
 }
 
+void Compiler::unaryInfix(bool) {
+    // @formatter:off
+    // clang-format off
+    switch (parser.previous.type) {
+        case TokenType::MINUSMINUS: emitByte(OpCode::DEC); break;
+        case TokenType::PLUSPLUS: emitByte(OpCode::INC); break;
+        default: return; // Unreachable.
+    }
+    // clang-format on
+    // @formatter:on
+}
+
 // Emit an `assignment by` instruction (+=, -=, etc.)
-void Compiler::emitAssignmentBy(const TokenType::Type byType) {
-    const uint32_t var = identifierConstant(&parser.previous);
-
-    if (state.scopeDepth > 0) { emitVariable(OpCode::GET_LOCAL, var); }
-    else { emitVariable(OpCode::GET_GLOBAL, var); }
-
-    expression();
-
+void Compiler::emitAssignmentBy(const TokenType::Type byType, const uint32_t var,
+                                const OpCode setter) {
     switch (byType) {
-        case TokenType::MINUS_EQ: emitBytes(OpCode::NEGATE, OpCode::ADD);
+        case TokenType::MINUS_EQ: {
+            emitBytes(OpCode::NEGATE, OpCode::ADD);
             break;
+        }
+
         default: return; // Unreachable
     }
 
-    if (state.scopeDepth > 0) { emitVariable(OpCode::SET_LOCAL, var); }
-    else { emitVariable(OpCode::SET_GLOBAL, var); }
+    emitVariable(setter, var);
 }
 
 void Compiler::binary(bool) {
     const TokenType::Type operatorType = parser.previous.type;
+
+    uint32_t var;
+    OpCode setter;
+    if (const auto local = resolveLocal(parser.previous)) {
+        var = *local;
+        setter = OpCode::SET_LOCAL;
+    }
+    else {
+        var = identifierConstant(&parser.previous);
+        setter = OpCode::SET_GLOBAL;
+    }
+
     ParseRule* rule = getRule(operatorType);
     parsePrecedence(static_cast<Precedence>(static_cast<size_t>(rule->precedence) + 1));
 
     // @formatter:off
     // clang-format off
     switch (operatorType) {
-        case TokenType::MINUS:      emitBytes(OpCode::NEGATE, OpCode::ADD);  break;
-        case TokenType::MINUS_EQ:   emitAssignmentBy(TokenType::MINUS_EQ);   break;
-        case TokenType::PLUS:       emitByte(OpCode::ADD);                   break;
-        case TokenType::SLASH:      emitByte(OpCode::DIVIDE);                break;
-        case TokenType::STAR:       emitByte(OpCode::MULTIPLY);              break;
-        case TokenType::BANG_EQ:    emitBytes(OpCode::EQUAL, OpCode::NOT);   break;
-        case TokenType::EQ_EQ:      emitByte(OpCode::EQUAL);                 break;
-        case TokenType::GREATER:    emitByte(OpCode::GREATER);               break;
-        case TokenType::GREATER_EQ: emitBytes(OpCode::LESS, OpCode::NOT);    break;
-        case TokenType::LESS:       emitByte(OpCode::LESS);                  break;
-        case TokenType::LESS_EQ:    emitBytes(OpCode::GREATER, OpCode::NOT); break;
-        case TokenType::LSHIFT:     emitByte(OpCode::LEFTSHIFT);             break;
-        case TokenType::RSHIFT:     emitByte(OpCode::RIGHTSHIFT);            break;
-        case TokenType::PERCENT:    emitByte(OpCode::MODULO);                break;
+        case TokenType::MINUS:      emitBytes(OpCode::NEGATE, OpCode::ADD);             break;
+        case TokenType::MINUS_EQ:   emitAssignmentBy(TokenType::MINUS_EQ, var, setter); break;
+        case TokenType::PLUS:       emitByte(OpCode::ADD);                              break;
+        case TokenType::SLASH:      emitByte(OpCode::DIVIDE);                           break;
+        case TokenType::STAR:       emitByte(OpCode::MULTIPLY);                         break;
+        case TokenType::BANG_EQ:    emitBytes(OpCode::EQUAL, OpCode::NOT);              break;
+        case TokenType::EQ_EQ:      emitByte(OpCode::EQUAL);                            break;
+        case TokenType::GREATER:    emitByte(OpCode::GREATER);                          break;
+        case TokenType::GREATER_EQ: emitBytes(OpCode::LESS, OpCode::NOT);               break;
+        case TokenType::LESS:       emitByte(OpCode::LESS);                             break;
+        case TokenType::LESS_EQ:    emitBytes(OpCode::GREATER, OpCode::NOT);            break;
+        case TokenType::LSHIFT:     emitByte(OpCode::LEFTSHIFT);                        break;
+        case TokenType::RSHIFT:     emitByte(OpCode::RIGHTSHIFT);                       break;
+        case TokenType::PERCENT:    emitByte(OpCode::MODULO);                           break;
         default: return; // Unreachable
     }
     // clang-format on

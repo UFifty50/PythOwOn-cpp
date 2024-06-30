@@ -36,8 +36,9 @@ char Scanner::peek(const int distance) const {
 
 TokenType Scanner::checkKeyword(const uint32_t begin, const uint32_t length,
                                 const std::string& rest, const TokenType type) const {
-    if (current - start == begin + length &&
-        source.substr(start + begin, length) == rest) { return type; }
+    if (current - start == begin + length && source.substr(start + begin, length) == rest) {
+        return type;
+    }
 
     return TokenType::IDENTIFIER;
 }

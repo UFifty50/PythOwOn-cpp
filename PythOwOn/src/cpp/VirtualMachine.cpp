@@ -66,14 +66,20 @@ InterpretResult VM::Run() {
                 break;
             }
 
-            case OpCode::FALSE: VMstate.stack.push(Value::BoolVal(false));
+            case OpCode::FALSE: {
+                VMstate.stack.push(Value::BoolVal(false));
                 break;
+            }
 
-            case OpCode::TRUE: VMstate.stack.push(Value::BoolVal(true));
+            case OpCode::TRUE: {
+                VMstate.stack.push(Value::BoolVal(true));
                 break;
+            }
 
-            case OpCode::POP: VMstate.stack.pop();
+            case OpCode::POP: {
+                VMstate.stack.pop();
                 break;
+            }
 
             case OpCode::GET_LOCAL: {
                 uint8_t slot = ReadByte();
@@ -158,52 +164,85 @@ InterpretResult VM::Run() {
             case OpCode::NONE: VMstate.stack.push(Value::NoneVal());
                 break;
 
-            case OpCode::CONSTANT_LONG: Value constant = ReadConstantLong();
+            case OpCode::CONSTANT_LONG: {
+                Value constant = ReadConstantLong();
                 VMstate.stack.push(constant);
                 break;
+            }
 
-            case OpCode::DUP: VMstate.stack.push(VMstate.stack.peek(0));
+            case OpCode::DUP: {
+                VMstate.stack.push(VMstate.stack.peek(0));
                 break;
+            }
 
             case OpCode::INC: {
-                if (!VMstate.stack.peek(0).isNumber() && !VMstate.stack.peek(
-                    0).isSpecialNumber()) {
-                    RuntimeError("Operand must be a number.");
+                if (!VMstate.stack.peek(0).isNumber()) {
+                    RuntimeError("Can only increment numbers.");
                     return InterpretResult::RUNTIME_ERROR;
                 }
 
-            case OpCode::EQUAL: Value firstVal = VMstate.stack.pop();
+                Value a = VMstate.stack.pop();
+                double val = Value::AsDouble(a).as.decimal + 1;
+                VMstate.stack.push(Value::NumberVal(val, a.isDouble()));
+
+                break;
+            }
+
+            case OpCode::DEC: {
+                if (!VMstate.stack.peek(0).isNumber()) {
+                    RuntimeError("Can only decrement numbers.");
+                    return InterpretResult::RUNTIME_ERROR;
+                }
+
+                Value a = VMstate.stack.pop();
+                double val = Value::AsDouble(a).as.decimal - 1;
+                VMstate.stack.push(Value::NumberVal(val, a.isDouble()));
+
+                break;
+            }
+
+            case OpCode::EQUAL: {
+                Value firstVal = VMstate.stack.pop();
                 Value secondVal = VMstate.stack.pop();
                 VMstate.stack.push(Value::BoolVal(secondVal.isEqualTo(firstVal)));
                 break;
+            }
 
-            case OpCode::GREATER: if (auto a = BinaryOp<std::greater<
-                    Value>>(&VM::DigitChecker))
-                    return a.value();
+            case OpCode::GREATER: {
+                if (auto a = BinaryOp<std::greater<Value>>(&VM::DigitChecker)) return a.value();
                 break;
+            }
 
-            case OpCode::LESS: if (auto a = BinaryOp<std::less<Value>>(&VM::DigitChecker))
+            case OpCode::LESS: {
+                if (auto a = BinaryOp<std::less<Value>>(&VM::DigitChecker))
                     return a.
                         value();
                 break;
+            }
 
-            case OpCode::ADD: if (auto a = BinaryOp<std::plus<Value>>(&VM::AddableChecker))
+            case OpCode::ADD: {
+                if (auto a = BinaryOp<std::plus<Value>>(&VM::AddableChecker))
                     return a
                         .value();
                 break;
+            }
 
-            case OpCode::MULTIPLY: if (auto a = BinaryOp<std::multiplies<Value>>(
+            case OpCode::MULTIPLY: {
+                if (auto a = BinaryOp<std::multiplies<Value>>(
                     &VM::MultiplicableChecker))
                     return a.value();
                 break;
+            }
 
-            case OpCode::DIVIDE: if (auto a = BinaryOp<std::divides<
-                    Value>>(&VM::DigitChecker))
-                    return a.value();
+            case OpCode::DIVIDE: {
+                if (auto a = BinaryOp<std::divides<Value>>(&VM::DigitChecker)) return a.value();
                 break;
+            }
 
-            case OpCode::NOT: VMstate.stack.push(Value::BoolVal(VMstate.stack.pop().isFalsey()));
+            case OpCode::NOT: {
+                VMstate.stack.push(Value::BoolVal(VMstate.stack.pop().isFalsey()));
                 break;
+            }
 
             case OpCode::NEGATE: {
                 if (!VMstate.stack.peek(0).isNumber() &&
@@ -225,20 +264,20 @@ InterpretResult VM::Run() {
                 break;
             }
 
-            case OpCode::LEFTSHIFT: if (auto a = BinaryOp<lshift<
-                    Value>>(&VM::IntegerChecker))
-                    return a.value();
+            case OpCode::LEFTSHIFT: {
+                if (auto a = BinaryOp<lshift<Value>>(&VM::IntegerChecker)) return a.value();
                 break;
+            }
 
-            case OpCode::RIGHTSHIFT: if (auto a = BinaryOp<rshift<
-                    Value>>(&VM::IntegerChecker))
-                    return a.value();
+            case OpCode::RIGHTSHIFT: {
+                if (auto a = BinaryOp<rshift<Value>>(&VM::IntegerChecker)) return a.value();
                 break;
+            }
 
-            case OpCode::MODULO: if (auto a = BinaryOp<std::modulus<
-                    Value>>(&VM::DigitChecker))
-                    return a.value();
+            case OpCode::MODULO: {
+                if (auto a = BinaryOp<std::modulus<Value>>(&VM::DigitChecker)) return a.value();
                 break;
+            }
 
             case OpCode::PRINT: {
                 printValue(VMstate.stack.pop());

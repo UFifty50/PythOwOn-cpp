@@ -88,7 +88,7 @@ private:
 
     void emitByte(uint8_t byte);
     void emitBytes(uint8_t byte1, uint8_t byte2);
-    void emitAssignmentBy(TokenType::Type byType);
+    void emitAssignmentBy(TokenType::Type byType, uint32_t var, OpCode setter);
     [[nodiscard]] uint16_t emitJump(OpCode op);
     [[nodiscard]] uint32_t emitJumpLong(OpCode op);
     void emitConstant(Value value);
@@ -131,6 +131,7 @@ private:
     void endScope();
     void panicSync();
     void unary(bool);
+    void unaryInfix(bool);
     void binary(bool);
     void literal(bool);
     void string(bool);
