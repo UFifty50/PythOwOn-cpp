@@ -16,8 +16,7 @@ int32_t g_innermostLoopStart = -1;
 uint16_t g_innermostLoopScopeDepth = 0;
 
 
-Compiler::Compiler(const std::shared_ptr<Chunk>& chunkToCompile) : chunk(chunkToCompile) {
-    state = std::make_unique<CompilerState>();
+Compiler::Compiler(Chunk& chunkToCompile) : chunk(chunkToCompile), scanner("") {
     parser.hadError = false;
     parser.panicMode = false;
 
@@ -92,7 +91,7 @@ void Compiler::advance() {
     parser.previous = parser.current;
 
     while (true) {
-        parser.current = scanner->scanToken();
+        parser.current = scanner.scanToken();
 
         if (parser.current.type != TokenType::ERROR) break;
 
@@ -130,7 +129,7 @@ bool Compiler::match(const TokenType::Type type) {
     return true;
 }
 
-void Compiler::emitByte(const uint8_t byte) const { chunk->write(byte, parser.previous.line); }
+void Compiler::emitByte(const uint8_t byte) const { chunk.write(byte, parser.previous.line); }
 
 void Compiler::emitBytes(const uint8_t byte1, const uint8_t byte2) const {
     emitByte(byte1);
@@ -141,7 +140,7 @@ uint16_t Compiler::emitJump(const OpCode op) const {
     emitByte(op);
     emitByte(0xff);
     emitByte(0xff);
-    return static_cast<uint16_t>(chunk->code.size()) - 2;
+    return static_cast<uint16_t>(chunk.code.size()) - 2;
 }
 
 uint32_t Compiler::emitJumpLong(const OpCode op) const {
@@ -150,45 +149,45 @@ uint32_t Compiler::emitJumpLong(const OpCode op) const {
     emitByte(0xff);
     emitByte(0xff);
     emitByte(0xff);
-    return static_cast<uint32_t>(chunk->code.size()) - 4;
+    return static_cast<uint32_t>(chunk.code.size()) - 4;
 }
 
 void Compiler::emitConstant(const Value value) const {
-    chunk->writeConstant(value, parser.previous.line);
+    chunk.writeConstant(value, parser.previous.line);
 }
 
 void Compiler::patchJump(const int32_t offset) {
     // -2 to adjust for the bytecode for the jump offset itself.
-    const int32_t jump = static_cast<int32_t>(chunk->code.size()) - offset - 2;
+    const int32_t jump = static_cast<int32_t>(chunk.code.size()) - offset - 2;
 
     if (jump > UINT16_MAX) {
         errorAt(parser.previous,
                 "Too much code to jump over. Why wasn't patchJumpLong used?");
     }
 
-    chunk->code[offset] = jump >> 8 & 0xff;
-    chunk->code[offset + 1] = jump & 0xff;
+    chunk.code[offset] = jump >> 8 & 0xff;
+    chunk.code[offset + 1] = jump & 0xff;
 }
 
 void Compiler::patchJumpLong(const uint32_t offset) {
-    const uint32_t jump = static_cast<uint32_t>(chunk->code.size()) - offset - 4;
+    const uint32_t jump = static_cast<uint32_t>(chunk.code.size()) - offset - 4;
 
     if (jump > UINT32_MAX) { errorAt(parser.previous, "Too much code to jump over."); }
 
-    chunk->code[offset] = jump >> 24 & 0xff;
-    chunk->code[offset + 1] = jump >> 16 & 0xff;
-    chunk->code[offset + 2] = jump >> 8 & 0xff;
-    chunk->code[offset + 3] = jump & 0xff;
+    chunk.code[offset] = jump >> 24 & 0xff;
+    chunk.code[offset + 1] = jump >> 16 & 0xff;
+    chunk.code[offset + 2] = jump >> 8 & 0xff;
+    chunk.code[offset + 3] = jump & 0xff;
 }
 
 void Compiler::emitVariable(const OpCode op, const uint32_t var) const {
-    chunk->writeVariable(op, var, parser.previous.line);
+    chunk.writeVariable(op, var, parser.previous.line);
 }
 
 void Compiler::emitLoop(const uint16_t loopStart) {
     emitByte(OpCode::LOOP);
 
-    const uint16_t offset = static_cast<uint16_t>(chunk->code.size()) - loopStart + 2;
+    const uint16_t offset = static_cast<uint16_t>(chunk.code.size()) - loopStart + 2;
     if (offset > UINT16_MAX) { errorAt(parser.previous, "Loop body too large."); }
 
     emitByte(offset >> 8 & 0xff);
@@ -201,7 +200,7 @@ void Compiler::endCompiler() const {
     emitReturn();
 
 #if defined(TRACE_EXECUTION)
-    if (!parser.hadError) { chunk->disassemble("code"); }
+    if (!parser.hadError) { chunk.disassemble("code"); }
 #endif
 }
 
@@ -209,7 +208,7 @@ void Compiler::endCompiler() const {
 // makeConstant (now not needed thanks to Chunk::writeConstant)
 /*
 uint8_t Compiler::makeConstant(Value value) {
-    size_t constant = chunk->addConstant(value);
+    size_t constant = chunk.addConstant(value);
     if (constant > UINT8_MAX) {
         errorAt(parser.previous, "Too many constants in one chunk.");
         return 0;
@@ -242,11 +241,11 @@ void Compiler::parsePrecedence(const Precedence precedence) {
 uint32_t Compiler::identifierConstant(const Token* name) const {
     const ObjString* str = ObjString::Create(name->lexeme);
     const Value objVal = Value::ObjectVal(str);
-    return chunk->addConstant(objVal);
+    return chunk.addConstant(objVal);
 }
 
 std::optional<uint32_t> Compiler::resolveLocal(const Token& name) {
-    for (auto&& [index, local] : enumerate(state->locals).reverse()) {
+    for (auto&& [index, local] : enumerate(state.locals).reverse()) {
         if (name.lexeme == local.name.lexeme) {
             if (local.depth == -1) {
                 errorAt(name, "Cannot read local variable in its own initializer.");
@@ -262,19 +261,19 @@ uint32_t Compiler::parseVariable(const std::string& errorMessage) {
     consume(TokenType::IDENTIFIER, errorMessage);
 
     declareVariable();
-    if (state->scopeDepth > 0) return 0;
+    if (state.scopeDepth > 0) return 0;
 
     return identifierConstant(&parser.previous);
 }
 
-void Compiler::markInitialized() const {
-    if (state->scopeDepth == 0) return;
+void Compiler::markInitialized() {
+    if (state.scopeDepth == 0) return;
 
-    state->locals.back().depth = static_cast<int32_t>(state->scopeDepth);
+    state.locals.back().depth = static_cast<int32_t>(state.scopeDepth);
 }
 
 void Compiler::defineVariable(const uint32_t global) const {
-    if (state->scopeDepth > 0) {
+    if (state.scopeDepth > 0) {
         markInitialized();
         return;
     }
@@ -283,24 +282,24 @@ void Compiler::defineVariable(const uint32_t global) const {
 }
 
 void Compiler::declareVariable() {
-    if (state->scopeDepth == 0) return;
+    if (state.scopeDepth == 0) return;
 
     const Token* name = &parser.previous;
 
-    for (const auto& [localName, localDepth] : state->locals | std::views::reverse) {
-        if (localDepth != -1 && static_cast<unsigned>(localDepth) < state->scopeDepth) break;
+    for (const auto& [localName, localDepth] : state.locals | std::views::reverse) {
+        if (localDepth != -1 && static_cast<unsigned>(localDepth) < state.scopeDepth) break;
 
         if (name->lexeme == localName.lexeme) {
             errorAt(*name, "Already variable with this name in this scope.");
         }
     }
 
-    if (state->locals.size() >= UINT32_MAX) {
+    if (state.locals.size() >= UINT32_MAX) {
         errorAt(parser.previous, "Too many local variables in function.");
         return;
     }
 
-    state->addLocal(*name);
+    state.addLocal(*name);
 }
 
 void Compiler::namedVariable(const Token& name, const bool canAssign) {
@@ -453,7 +452,7 @@ void Compiler::switchStatement() {
 }
 
 void Compiler::whileStatement() {
-    const uint16_t loopStart = static_cast<uint16_t>(chunk->code.size());
+    const uint16_t loopStart = static_cast<uint16_t>(chunk.code.size());
 
     consume(TokenType::LPAREN, "Expected '(' after 'while'.");
     expression();
@@ -482,8 +481,8 @@ void Compiler::forStatement() {
 
     const int32_t surroundingLoopStart = g_innermostLoopStart;
     const uint16_t surroundingLoopScopeDepth = g_innermostLoopScopeDepth;
-    g_innermostLoopStart = static_cast<int32_t>(chunk->code.size());
-    g_innermostLoopScopeDepth = static_cast<uint16_t>(state->scopeDepth);
+    g_innermostLoopStart = static_cast<int32_t>(chunk.code.size());
+    g_innermostLoopScopeDepth = static_cast<uint16_t>(state.scopeDepth);
 
     int32_t exitJump = -1;
     if (!match(TokenType::SEMI)) {
@@ -496,7 +495,7 @@ void Compiler::forStatement() {
 
     if (!match(TokenType::RPAREN)) {
         const uint16_t bodyJump = emitJump(OpCode::JUMP);
-        const uint16_t incrementStart = static_cast<uint16_t>(chunk->code.size());
+        const uint16_t incrementStart = static_cast<uint16_t>(chunk.code.size());
         expression();
         emitByte(OpCode::POP);
         consume(TokenType::RPAREN, "Expected ')' after for clauses.");
@@ -528,7 +527,7 @@ void Compiler::continueStatement() {
 
     consume(TokenType::SEMI, "Expected ';' after continue.");
 
-    for (auto& [_, localDepth] : state->locals | std::views::reverse) {
+    for (auto& [_, localDepth] : state.locals | std::views::reverse) {
         if (localDepth <= g_innermostLoopScopeDepth) break;
 
         emitByte(OpCode::POP);
@@ -593,15 +592,15 @@ void Compiler::block() {
     consume(TokenType::RBRACE, "Expected '}' after block.");
 }
 
-void Compiler::beginScope() const { state->scopeDepth++; }
+void Compiler::beginScope() { state.scopeDepth++; }
 
-void Compiler::endScope() const {
-    state->scopeDepth--;
+void Compiler::endScope() {
+    state.scopeDepth--;
 
-    while (!state->locals.empty() &&
-        static_cast<uint32_t>(state->locals.back().depth) > state->scopeDepth) {
+    while (!state.locals.empty() &&
+        static_cast<uint32_t>(state.locals.back().depth) > state.scopeDepth) {
         emitByte(OpCode::POP);
-        state->locals.pop_back();
+        state.locals.pop_back();
     }
 }
 
@@ -718,8 +717,9 @@ void Compiler::grouping(bool) {
 }
 
 
-bool Compiler::compile(const std::string& source) {
-    scanner = std::make_unique<Scanner>(source);
+bool Compiler::compile(const Chunk& chunkToCompile, const std::string& source) {
+    chunk = chunkToCompile;
+    scanner = Scanner(source);
 
     advance();
 

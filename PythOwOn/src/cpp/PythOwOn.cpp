@@ -8,6 +8,7 @@
 
 #include "Common.hpp"
 #include "CompilationPileline.hpp"
+#include "Compiler.hpp"
 #include "VirtualMachine.hpp"
 
 using namespace std::string_literals;
@@ -18,8 +19,6 @@ uint8_t repl();
 uint8_t runFile(std::string path);
 uint8_t compileFile(std::string path, std::string outFile);
 [[noreturn]] void signalHandler(int sigNum);
-
-CompilationPipeline* g_compilationPipeline;
 
 
 int main(const int argc, char** argv) {
@@ -88,8 +87,6 @@ int main(const int argc, char** argv) {
 [[noreturn]] void signalHandler(int sigNum) {
     FMT_PRINTLN("Recieved signal number {0}, exiting...", sigNum);
 
-    delete g_compilationPipeline;
-
     std::quick_exit(sigNum);
 }
 
@@ -139,7 +136,8 @@ bool isEmpty(const std::string& line, const bool allowWhitespace = false) {
 uint8_t repl() {
     std::string line;
     std::string tmp;
-    g_compilationPipeline = new CompilationPipeline();
+
+    const auto compiler = std::make_unique<Compiler>();
 
     while (true) {
         FMT_PRINT("PythOwOn <<< ");
@@ -152,7 +150,16 @@ uint8_t repl() {
             line += tmp + '\n';
         }
 
-        if (!isEmpty(line, false)) g_compilationPipeline->interpret(line);
+        if (!isEmpty(line, false)) {
+            auto codeChunk = Chunk{};
+            if (!compiler->compile(codeChunk, line)) { return InterpretResult::COMPILE_ERROR; }
+
+            VM::InitVM();
+            VM::SetChunk(codeChunk);
+            const InterpretResult result = VM::Run();
+
+            if (result == InterpretResult::RUNTIME_ERROR) return result;
+        }
         line = "";
     }
 }
@@ -163,13 +170,16 @@ uint8_t runInterpretedFile(std::ifstream& file) {
     ss << file.rdbuf();
     const std::string source = ss.str();
 
-    g_compilationPipeline = new CompilationPipeline();
-    const InterpretResult result = g_compilationPipeline->interpret(source);
+    const auto compiler = std::make_unique<Compiler>();
 
-    delete g_compilationPipeline;
+    auto codeChunk = Chunk{};
+    if (compiler->compile(codeChunk, source)) { return InterpretResult::COMPILE_ERROR; }
 
-    if (result == InterpretResult::COMPILE_ERROR) return 65;
-    if (result == InterpretResult::RUNTIME_ERROR) return 70;
+    VM::InitVM();
+    VM::SetChunk(codeChunk);
+    const InterpretResult result = VM::Run();
+
+    if (result == InterpretResult::RUNTIME_ERROR) return result;
 
     return 0;
 }
@@ -225,11 +235,9 @@ Value readConstant(std::ifstream& file, const std::vector<std::string>& strTable
 
 uint8_t runCompiledFile(std::ifstream& file, const size_t fileLen,
                         const std::string& fileName) {
+    char temp32[sizeof(uint32_t)];
+
     // read 4 bytes for number line indices, 4 bytes for number of constants, 4 bytes for number of strings in string table
-    auto* temp32 = new char[sizeof(uint32_t)];
-    auto* temp64 = new char[sizeof(size_t)];
-
-
     file.read(temp32, 4);
     const uint32_t numLines = BEStrToLE<uint32_t>(temp32);
     file.read(temp32, 4);
@@ -254,6 +262,7 @@ uint8_t runCompiledFile(std::ifstream& file, const size_t fileLen,
     // read line indices
     std::vector<size_t> lines(numLines);
     for (uint32_t i = 0; i < numLines; i++) {
+        char temp64[sizeof(size_t)];
         file.read(temp64, sizeof(size_t));
         lines[i] = BEStrToLE<size_t>(temp64);
     }
@@ -268,22 +277,17 @@ uint8_t runCompiledFile(std::ifstream& file, const size_t fileLen,
         return 74;
     }
 
-    delete[] temp32;
-    delete[] temp64;
-
-    const auto chunk = std::make_shared<Chunk>();
-    chunk->lines = std::move(lines);
-    chunk->constants = std::move(constants);
-    chunk->code = std::move(code);
+    auto chunk = Chunk{};
+    chunk.lines = std::move(lines);
+    chunk.constants = std::move(constants);
+    chunk.code = std::move(code);
 
     VM::InitVM();
     VM::SetChunk(chunk);
     const InterpretResult result = VM::Run();
     VM::ShutdownVM();
 
-    if (result == InterpretResult::RUNTIME_ERROR) return 70;
-
-    return 0;
+    return result;
 }
 
 uint8_t runFile(std::string path) {
@@ -349,7 +353,7 @@ namespace {
                 case ObjType::STRING: {
                     byteArray[1] = static_cast<uint8_t>(ObjType::STRING);
                     strTable.push_back(object->asString()->str);
-                    const uint32_t strTableIndex = static_cast<uint32_t>(strTable.size());
+                    const uint32_t strTableIndex = static_cast<uint32_t>(strTable.size()) - 1;
                     std::copy_n(LEtoBEStr<uint32_t>(strTableIndex - 1), 4, &byteArray[2]);
 
                     size += 5;
@@ -401,12 +405,10 @@ uint8_t compileFile(std::string path, std::string outFile) {
                        (std::istreambuf_iterator<char>()));
     file.close();
 
-    g_compilationPipeline = new CompilationPipeline();
-    auto [result, chunk] = g_compilationPipeline->compile(source);
+    auto codeChunk = Chunk{};
+    auto compiler = std::make_unique<Compiler>();
 
-    delete g_compilationPipeline;
-
-    if (result == InterpretResult::COMPILE_ERROR) return 65;
+    if (!compiler->compile(codeChunk, source)) return InterpretResult::COMPILE_ERROR;
 
     std::ofstream out(outFile, std::ios::binary);
     if (!out.is_open()) {
@@ -414,15 +416,15 @@ uint8_t compileFile(std::string path, std::string outFile) {
         return 74;
     }
 
-    uint32_t linesSize = static_cast<uint32_t>(chunk->lines.size());
-    uint32_t constantsSize = static_cast<uint32_t>(chunk->constants.size());
+    uint32_t linesSize = static_cast<uint32_t>(codeChunk.lines.size());
+    uint32_t constantsSize = static_cast<uint32_t>(codeChunk.constants.size());
 
     out << "POWON\0\0"s;
     out.write(LEtoBEStr<uint32_t>(linesSize), sizeof(uint32_t));
     out.write(LEtoBEStr<uint32_t>(constantsSize), sizeof(uint32_t));
-    out << chunk->constants; // includes string table
-    out << chunk->lines;
-    out << chunk->code;
+    out << codeChunk.constants; // includes string table
+    out << codeChunk.lines;
+    out << codeChunk.code;
     out.flush();
     out.close();
 

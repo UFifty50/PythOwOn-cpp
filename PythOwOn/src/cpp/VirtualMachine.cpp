@@ -1,6 +1,5 @@
 #include "VirtualMachine.hpp"
 
-#include <algorithm>
 #include <functional>
 #include <string>
 
@@ -21,7 +20,6 @@ void VM::InitVM() {
 }
 
 void VM::ShutdownVM() {
-    VMstate.chunk.reset();
     VMstate.stack.reset();
     VMstate.objects.clear();
     VMstate.strings.clear();
@@ -29,9 +27,9 @@ void VM::ShutdownVM() {
     VMstate.ip = nullptr;
 }
 
-void VM::SetChunk(const std::shared_ptr<Chunk>& chunk) {
+void VM::SetChunk(Chunk& chunk) {
     VMstate.chunk = chunk;
-    VMstate.ip = chunk->code.data();
+    VMstate.ip = chunk.code.data();
 }
 
 // Chunk* VM::getChunk() { return chunk; }
@@ -41,8 +39,8 @@ void VM::RuntimeError(const std::string& message, Ts... args) {
     FMT_PRINT(message + "\n", args...);
 
     const uint8_t instructionIdx =
-        static_cast<uint8_t>(VMstate.ip - VMstate.chunk->code.data());
-    size_t line = VMstate.chunk->lines[instructionIdx];
+        static_cast<uint8_t>(VMstate.ip - VMstate.chunk.code.data());
+    size_t line = VMstate.chunk.lines[instructionIdx];
     FMT_PRINTLN("[line {}] in script", line);
     VMstate.stack.reset();
 }
@@ -58,8 +56,8 @@ InterpretResult VM::Run() {
         }
         FMT_PRINT("\n");
 
-        VMstate.chunk->disassembleInstruction(
-            static_cast<size_t>(VMstate.ip - VMstate.chunk->code.data()));
+        VMstate.chunk.disassembleInstruction(
+            static_cast<size_t>(VMstate.ip - VMstate.chunk.code.data()));
 #endif
 
         switch (ReadByte()) {

@@ -5,7 +5,6 @@
 
 #include <array>
 #include <functional>
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -21,17 +20,17 @@ struct Value;
 
 enum class Precedence {
     NONE,
-    ASSIGNMENT,  // =, +=, /=, <<=, ... You get the point
+    ASSIGNMENT, // =, +=, /=, <<=, ... You get the point
     //   CONDITIONAL, // ?:
-    OR,          // or
-    AND,         // and
-    EQUALITY,    // ==, !=
-    COMPARISON,  // <, >, <=, >=
-    SHIFT,       // <<, >>
-    TERM,        // +, -
-    FACTOR,      // *, /, %
-    UNARY,       // !, -
-    CALL,        // ., ()
+    OR,         // or
+    AND,        // and
+    EQUALITY,   // ==, !=
+    COMPARISON, // <, >, <=, >=
+    SHIFT,      // <<, >>
+    TERM,       // +, -
+    FACTOR,     // *, /, %
+    UNARY,      // !, -
+    CALL,       // ., ()
     PRIMARY
 };
 
@@ -70,14 +69,14 @@ struct CompilerState {
 
 class Compiler {
 public:
-    Compiler(const std::shared_ptr<Chunk>& chunkToCompile);
+    Compiler() : scanner(""), parser() {}
 
-    bool compile(const std::string& source);
+    bool compile(const Chunk& chunkToCompile, const std::string& source);
 
 private:
-    std::shared_ptr<Chunk> chunk;
-    std::unique_ptr<Scanner> scanner;
-    std::unique_ptr<CompilerState> state;
+    Chunk chunk;
+    Scanner scanner;
+    CompilerState state;
     std::array<ParseRule, TokenType::TOKEN_COUNT> rules;
     Parser parser;
 
@@ -105,7 +104,7 @@ private:
     std::optional<uint32_t> resolveLocal(const Token& name);
 
     uint32_t parseVariable(const std::string& errorMessage);
-    void markInitialized() const;
+    void markInitialized();
     void defineVariable(uint32_t global) const;
     void declareVariable();
 
@@ -127,8 +126,8 @@ private:
     void declaration();
     void varDeclaration();
     void block();
-    void beginScope() const;
-    void endScope() const;
+    void beginScope();
+    void endScope();
     void panicSync();
     void unary(bool);
     void binary(bool);

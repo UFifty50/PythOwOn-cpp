@@ -4,7 +4,6 @@
 #include <stdint.h>
 
 #include <cstddef>
-#include <ostream>
 #include <string>
 #include <tuple>
 #include <type_traits>

@@ -75,7 +75,7 @@ std::ostream& operator<<(std::ostream& os,
 
 class InterpretResult {
 public:
-    enum Result : uint8_t { OK, COMPILE_ERROR, RUNTIME_ERROR };
+    enum Result : uint8_t { OK = 0, COMPILE_ERROR = 65, RUNTIME_ERROR = 70 };
 
     enum Cause : uint8_t { NONE, UNTERMINATED };
 

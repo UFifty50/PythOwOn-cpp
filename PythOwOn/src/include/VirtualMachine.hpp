@@ -21,7 +21,7 @@
 class VM {
 public:
     struct State {
-        std::shared_ptr<Chunk> chunk;
+        Chunk chunk;
         uint8_t* ip;
         Stack<Value> stack;
         std::unordered_set<ObjString> strings;
@@ -58,8 +58,8 @@ public:
         return value;
     }
 
-    static Value ReadConstant() { return VMstate.chunk->constants[ReadByte()]; }
-    static Value ReadConstantLong() { return VMstate.chunk->constants[ReadLong()]; }
+    static Value ReadConstant() { return VMstate.chunk.constants[ReadByte()]; }
+    static Value ReadConstantLong() { return VMstate.chunk.constants[ReadLong()]; }
 
     template <typename O>
     static O* NewObject(const ObjType type) {
@@ -90,8 +90,7 @@ public:
         VMstate.globals[*name] = value;
     }
 
-    static void SetChunk(const std::shared_ptr<Chunk>& chunk);
-    // Chunk* getChunk();
+    static void SetChunk(Chunk& chunk);
     static InterpretResult Run();
 
     template <AllPrintable... Ts>
