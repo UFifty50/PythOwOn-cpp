@@ -15,8 +15,10 @@
 int32_t g_innermostLoopStart = -1;
 uint16_t g_innermostLoopScopeDepth = 0;
 
+template <typename T>
+static T g_defaultRef = T();
 
-Compiler::Compiler(Chunk& chunkToCompile) : chunk(chunkToCompile), scanner("") {
+Compiler::Compiler() : chunk(g_defaultRef<Chunk>), scanner(Scanner("")), parser(Parser()) {
     parser.hadError = false;
     parser.panicMode = false;
 
@@ -129,21 +131,21 @@ bool Compiler::match(const TokenType::Type type) {
     return true;
 }
 
-void Compiler::emitByte(const uint8_t byte) const { chunk.write(byte, parser.previous.line); }
+void Compiler::emitByte(const uint8_t byte) { chunk.write(byte, parser.previous.line); }
 
-void Compiler::emitBytes(const uint8_t byte1, const uint8_t byte2) const {
+void Compiler::emitBytes(const uint8_t byte1, const uint8_t byte2) {
     emitByte(byte1);
     emitByte(byte2);
 }
 
-uint16_t Compiler::emitJump(const OpCode op) const {
+uint16_t Compiler::emitJump(const OpCode op) {
     emitByte(op);
     emitByte(0xff);
     emitByte(0xff);
     return static_cast<uint16_t>(chunk.code.size()) - 2;
 }
 
-uint32_t Compiler::emitJumpLong(const OpCode op) const {
+uint32_t Compiler::emitJumpLong(const OpCode op) {
     emitByte(op);
     emitByte(0xff);
     emitByte(0xff);
@@ -152,9 +154,7 @@ uint32_t Compiler::emitJumpLong(const OpCode op) const {
     return static_cast<uint32_t>(chunk.code.size()) - 4;
 }
 
-void Compiler::emitConstant(const Value value) const {
-    chunk.writeConstant(value, parser.previous.line);
-}
+void Compiler::emitConstant(const Value value) { chunk.writeConstant(value, parser.previous.line); }
 
 void Compiler::patchJump(const int32_t offset) {
     // -2 to adjust for the bytecode for the jump offset itself.
@@ -180,7 +180,7 @@ void Compiler::patchJumpLong(const uint32_t offset) {
     chunk.code[offset + 3] = jump & 0xff;
 }
 
-void Compiler::emitVariable(const OpCode op, const uint32_t var) const {
+void Compiler::emitVariable(const OpCode op, const uint32_t var) {
     chunk.writeVariable(op, var, parser.previous.line);
 }
 
@@ -194,9 +194,9 @@ void Compiler::emitLoop(const uint16_t loopStart) {
     emitByte(offset & 0xff);
 }
 
-void Compiler::emitReturn() const { emitByte(OpCode::RETURN); }
+void Compiler::emitReturn() { emitByte(OpCode::RETURN); }
 
-void Compiler::endCompiler() const {
+void Compiler::endCompiler() {
     emitReturn();
 
 #if defined(TRACE_EXECUTION)
@@ -238,7 +238,7 @@ void Compiler::parsePrecedence(const Precedence precedence) {
     }
 }
 
-uint32_t Compiler::identifierConstant(const Token* name) const {
+uint32_t Compiler::identifierConstant(const Token* name) {
     const ObjString* str = ObjString::Create(name->lexeme);
     const Value objVal = Value::ObjectVal(str);
     return chunk.addConstant(objVal);
@@ -272,7 +272,7 @@ void Compiler::markInitialized() {
     state.locals.back().depth = static_cast<int32_t>(state.scopeDepth);
 }
 
-void Compiler::defineVariable(const uint32_t global) const {
+void Compiler::defineVariable(const uint32_t global) {
     if (state.scopeDepth > 0) {
         markInitialized();
         return;
@@ -670,7 +670,7 @@ void Compiler::binary(bool) {
     // @formatter:on
 }
 
-void Compiler::literal(bool) const {
+void Compiler::literal(bool) {
     // @formatter:off
     // clang-format off
     switch (parser.previous.type) {
@@ -683,14 +683,14 @@ void Compiler::literal(bool) const {
     // @formatter:on
 }
 
-void Compiler::string(bool) const {
+void Compiler::string(bool) {
     const ObjString* str = ObjString::Create(parser.previous.lexeme, {1, -1});
     emitConstant(Value::ObjectVal(str));
 }
 
 void Compiler::variable(const bool canAssign) { namedVariable(parser.previous, canAssign); }
 
-void Compiler::number(bool) const {
+void Compiler::number(bool) {
     if (parser.previous.lexeme == "Nan") {
         emitConstant(Value::Nan(true));
         return;
@@ -717,8 +717,8 @@ void Compiler::grouping(bool) {
 }
 
 
-bool Compiler::compile(const Chunk& chunkToCompile, const std::string& source) {
-    chunk = chunkToCompile;
+std::pair<InterpretResult, Chunk> Compiler::compile(const std::string& source) {
+    chunk = Chunk();
     scanner = Scanner(source);
 
     advance();
@@ -726,5 +726,7 @@ bool Compiler::compile(const Chunk& chunkToCompile, const std::string& source) {
     while (!match(TokenType::EOF)) { declaration(); }
 
     endCompiler();
-    return !parser.hadError;
+
+    InterpretResult result = parser.hadError ? InterpretResult::COMPILE_ERROR : InterpretResult::OK;
+    return {result, chunk};
 }

@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <string>
+#include <utility>
 
 #include "Common.hpp"
 #include "Value.hpp"
@@ -27,12 +28,10 @@ void VM::ShutdownVM() {
     VMstate.ip = nullptr;
 }
 
-void VM::SetChunk(Chunk& chunk) {
-    VMstate.chunk = chunk;
-    VMstate.ip = chunk.code.data();
+void VM::SetChunk(Chunk chunk) {
+    VMstate.chunk = std::move(chunk);
+    VMstate.ip = VMstate.chunk.code.data();
 }
-
-// Chunk* VM::getChunk() { return chunk; }
 
 template <AllPrintable... Ts>
 void VM::RuntimeError(const std::string& message, Ts... args) {

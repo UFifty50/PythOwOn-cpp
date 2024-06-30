@@ -90,7 +90,7 @@ public:
         VMstate.globals[*name] = value;
     }
 
-    static void SetChunk(Chunk& chunk);
+    static void SetChunk(Chunk chunk);
     static InterpretResult Run();
 
     template <AllPrintable... Ts>

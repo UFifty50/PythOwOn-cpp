@@ -7,7 +7,6 @@
 #include <sstream>
 
 #include "Common.hpp"
-#include "CompilationPileline.hpp"
 #include "Compiler.hpp"
 #include "VirtualMachine.hpp"
 
@@ -136,7 +135,9 @@ bool isEmpty(const std::string& line, const bool allowWhitespace = false) {
 uint8_t repl() {
     std::string line;
     std::string tmp;
+    InterpretResult result;
 
+    VM::InitVM();
     const auto compiler = std::make_unique<Compiler>();
 
     while (true) {
@@ -151,17 +152,27 @@ uint8_t repl() {
         }
 
         if (!isEmpty(line, false)) {
-            auto codeChunk = Chunk{};
-            if (!compiler->compile(codeChunk, line)) { return InterpretResult::COMPILE_ERROR; }
+            auto [compileResult, codeChunk] = compiler->compile(line);
+            result = compileResult;
+            if (compileResult != InterpretResult::OK) break;
 
-            VM::InitVM();
             VM::SetChunk(codeChunk);
-            const InterpretResult result = VM::Run();
+            const InterpretResult runResult = VM::Run();
+            result = runResult;
 
-            if (result == InterpretResult::RUNTIME_ERROR) return result;
+            if (runResult == InterpretResult::RUNTIME_ERROR) break;
         }
         line = "";
     }
+
+    VM::ShutdownVM();
+
+    if (result == InterpretResult::COMPILE_ERROR)
+        FMT_PRINTLN("Compile error.");
+    if (result == InterpretResult::RUNTIME_ERROR)
+        FMT_PRINTLN("Runtime error.");
+
+    return result;
 }
 
 uint8_t runInterpretedFile(std::ifstream& file) {
@@ -170,18 +181,17 @@ uint8_t runInterpretedFile(std::ifstream& file) {
     ss << file.rdbuf();
     const std::string source = ss.str();
 
+    VM::InitVM();
     const auto compiler = std::make_unique<Compiler>();
 
-    auto codeChunk = Chunk{};
-    if (compiler->compile(codeChunk, source)) { return InterpretResult::COMPILE_ERROR; }
+    auto [compileResult, codeChunk] = compiler->compile(source);
+    if (compileResult != InterpretResult::OK) { return InterpretResult::COMPILE_ERROR; }
 
-    VM::InitVM();
     VM::SetChunk(codeChunk);
     const InterpretResult result = VM::Run();
+    VM::ShutdownVM();
 
-    if (result == InterpretResult::RUNTIME_ERROR) return result;
-
-    return 0;
+    return result;
 }
 
 Value readConstant(std::ifstream& file, const std::vector<std::string>& strTable) {
@@ -204,12 +214,14 @@ Value readConstant(std::ifstream& file, const std::vector<std::string>& strTable
         case ValueType::INT: {
             file.read(reinterpret_cast<char*>(&val.as.integer),
                       sizeof(val.as.integer));
+            val.as.integer = BEStrToLE<int64_t>(reinterpret_cast<char*>(&val.as.integer));
             break;
         }
 
         case ValueType::DOUBLE: {
             file.read(reinterpret_cast<char*>(&val.as.decimal),
                       sizeof(val.as.decimal));
+            val.as.decimal = BEStrToLE<double>(reinterpret_cast<char*>(&val.as.decimal));
             break;
         }
         case ValueType::OBJECT: {
@@ -316,9 +328,9 @@ uint8_t runFile(std::string path) {
 
 
 namespace {
-[[nodiscard]] std::pair<const char*, uint8_t> ValueToBytes(const Value& value,
-                                                           std::vector<std::string>& strTable) {
-    static uint8_t byteArray[sizeof(Value)];
+[[nodiscard]] std::pair<std::unique_ptr<uint8_t[]>, uint8_t> ValueToBytes(
+    const Value& value, std::vector<std::string>& strTable) {
+    std::unique_ptr<uint8_t[]> byteArray(new uint8_t[sizeof(Value)]{});
     byteArray[0] = static_cast<uint8_t>(value.type);
     uint8_t size = 1;
 
@@ -354,7 +366,7 @@ namespace {
                     byteArray[1] = static_cast<uint8_t>(ObjType::STRING);
                     strTable.push_back(object->asString()->str);
                     const uint32_t strTableIndex = static_cast<uint32_t>(strTable.size()) - 1;
-                    std::copy_n(LEtoBEStr<uint32_t>(strTableIndex - 1), 4, &byteArray[2]);
+                    std::copy_n(LEtoBEStr<uint32_t>(strTableIndex), 4, &byteArray[2]);
 
                     size += 5;
                     break;
@@ -367,16 +379,21 @@ namespace {
         default: break;
     }
 
-    return {reinterpret_cast<const char*>(byteArray), size};
+
+    return std::pair{std::move(byteArray), size};
 }
 }
 
 std::ostream& operator<<(std::ostream& os, const std::vector<Value>& values) {
     std::vector<std::string> strTable;
-    std::vector<std::pair<const char*, uint8_t>> valueBytes(values.size());
+    std::vector<std::pair<std::unique_ptr<uint8_t[]>, uint8_t>> valueBytes;
 
     // first pass
-    for (auto& val : values) { valueBytes.push_back(ValueToBytes(val, strTable)); }
+    valueBytes.reserve(values.size());
+    for (auto& val : values) {
+        valueBytes.push_back(ValueToBytes(val, strTable));
+        // e
+    }
 
     const uint32_t strTableSize = static_cast<uint32_t>(strTable.size());
     os.write(LEtoBEStr<uint32_t>(strTableSize), sizeof(uint32_t));
@@ -389,7 +406,9 @@ std::ostream& operator<<(std::ostream& os, const std::vector<Value>& values) {
     }
 
     // write constants
-    for (const auto& [val, size] : valueBytes) os.write(val, size);
+    for (const auto& [val, size] : valueBytes)
+        os.write(reinterpret_cast<const char*>(val.get()),
+                 size);
 
     return os;
 }
@@ -405,10 +424,10 @@ uint8_t compileFile(std::string path, std::string outFile) {
                        (std::istreambuf_iterator<char>()));
     file.close();
 
-    auto codeChunk = Chunk{};
     auto compiler = std::make_unique<Compiler>();
 
-    if (!compiler->compile(codeChunk, source)) return InterpretResult::COMPILE_ERROR;
+    auto [compileResult, codeChunk] = compiler->compile(source);
+    if (compileResult != InterpretResult::OK) { return InterpretResult::COMPILE_ERROR; }
 
     std::ofstream out(outFile, std::ios::binary);
     if (!out.is_open()) {
