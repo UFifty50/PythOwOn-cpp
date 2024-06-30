@@ -236,10 +236,14 @@ Value readConstant(std::ifstream& file, const std::vector<std::string>& strTable
                     const_cast<std::string&>(val.as.obj->asString()->str) = strTable[strIndex];
                 }
                 case ObjType::NONE:
+                    [[fallthrough]];
                 default: break;
             }
-        default: break;
+
+            break;
         }
+
+        default: break;
     }
 
     return val;
@@ -373,9 +377,13 @@ namespace {
                 }
 
                 case ObjType::NONE:
+                    [[fallthrough]];
                 default: break;
             }
+
+            break;
         }
+
         default: break;
     }
 

@@ -39,6 +39,19 @@ private:
     Token multiString();
     Token number();
     Token identifier();
+
+    Token scanSymbol(char c);
+
+    Token handleMinus();
+    Token handlePlus();
+    Token handleSlash();
+    Token handleStar();
+    Token handlePercent();
+    Token handleBang();
+    Token handleEqual();
+    Token handleGreater();
+    Token handleLess();
+    Token handleString();
 };
 
 #endif

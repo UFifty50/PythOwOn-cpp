@@ -261,10 +261,14 @@ Token Scanner::scanToken() {
 
     if (AT_END) return makeToken(TokenType::EOF, "");
 
-    char c = advance();
+    const char c = advance();
     if (IS_ALPHA(c)) return identifier();
     if (IS_DIGIT(c)) return number();
 
+    return scanSymbol(c);
+}
+
+Token Scanner::scanSymbol(const char c) {
     switch (c) {
         case '(': return makeToken(TokenType::LPAREN);
         case ')': return makeToken(TokenType::RPAREN);
@@ -274,30 +278,20 @@ Token Scanner::scanToken() {
         case ']': return makeToken(TokenType::RBRACK);
         case ',': return makeToken(TokenType::COMMA);
         case '.': return makeToken(TokenType::DOT);
-        case '-': return makeToken(TokenType::MINUS);
-        case '+': return makeToken(TokenType::PLUS);
+
+        case '-': return handleMinus();
+        case '+': return handlePlus();
         case ';': return makeToken(TokenType::SEMI);
-        case '/': return makeToken(TokenType::SLASH);
-        case '*': return makeToken(TokenType::STAR);
+        case '/': return handleSlash();
+        case '*': return handleStar();
         case ':': return makeToken(TokenType::COLON);
-        case '%': return makeToken(TokenType::PERCENT);
+        case '%': return handlePercent();
+        case '!': return handleBang();
+        case '=': return handleEqual();
+        case '>': return handleGreater();
+        case '<': return handleLess();
 
-        case '!': return makeToken(match('=') ? TokenType::BANG_EQ : TokenType::BANG);
-
-        case '=': return makeToken(match('=') ? TokenType::EQ_EQ : TokenType::EQ);
-
-        case '>': return makeToken(match('=')
-                                       ? TokenType::GREATER_EQ
-                                       : match('>')
-                                             ? TokenType::RSHIFT
-                                             : TokenType::GREATER);
-        case '<': return makeToken(match('=')
-                                       ? TokenType::LESS_EQ
-                                       : match('<')
-                                             ? TokenType::LSHIFT
-                                             : TokenType::LESS);
-
-        case '"': return peek(0) == '"' && peek(1) == '"' ? multiString() : string();
+        case '"': return handleString();
 
         default: return errorToken(FMT_FORMAT("Unexpected character: {}.", c));
     }
@@ -313,4 +307,65 @@ Token Scanner::makeToken(const TokenType type, const std::string& token) const {
 
 Token Scanner::errorToken(const std::string& message) const {
     return Token{TokenType::ERROR, message, line};
+}
+
+
+Token Scanner::handleMinus() {
+    if (match('-')) return makeToken(TokenType::MINUSMINUS);
+    if (match('=')) return makeToken(TokenType::MINUS_EQ);
+    return makeToken(TokenType::MINUS);
+}
+
+Token Scanner::handlePlus() {
+    if (match('+')) return makeToken(TokenType::PLUSPLUS);
+    if (match('=')) return makeToken(TokenType::PLUS_EQ);
+    return makeToken(TokenType::PLUS);
+}
+
+Token Scanner::handleSlash() {
+    if (match('=')) return makeToken(TokenType::SLASH_EQ);
+    return makeToken(TokenType::SLASH);
+}
+
+Token Scanner::handleStar() {
+    if (match('=')) return makeToken(TokenType::STAR_EQ);
+    return makeToken(TokenType::STAR);
+}
+
+Token Scanner::handlePercent() {
+    if (match('=')) return makeToken(TokenType::PERCENT_EQ);
+    return makeToken(TokenType::PERCENT);
+}
+
+Token Scanner::handleBang() {
+    if (match('=')) return makeToken(TokenType::BANG_EQ);
+    return makeToken(TokenType::BANG);
+}
+
+Token Scanner::handleEqual() {
+    if (match('=')) return makeToken(TokenType::EQ_EQ);
+    return makeToken(TokenType::EQ);
+}
+
+Token Scanner::handleGreater() {
+    if (match('=')) return makeToken(TokenType::GREATER_EQ);
+    if (match('>')) {
+        if (peek(1) == '=') return makeToken(TokenType::RSHIFT_EQ);
+        return makeToken(TokenType::RSHIFT);
+    }
+    return makeToken(TokenType::GREATER);
+}
+
+Token Scanner::handleLess() {
+    if (match('=')) return makeToken(TokenType::LESS_EQ);
+    if (match('<')) {
+        if (peek(1) == '=') return makeToken(TokenType::LSHIFT_EQ);
+        return makeToken(TokenType::LSHIFT);
+    }
+    return makeToken(TokenType::LESS);
+}
+
+Token Scanner::handleString() {
+    if (peek(0) == '"' && peek(1) == '"') return multiString();
+    return string();
 }

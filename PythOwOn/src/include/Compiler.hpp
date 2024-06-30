@@ -88,6 +88,7 @@ private:
 
     void emitByte(uint8_t byte);
     void emitBytes(uint8_t byte1, uint8_t byte2);
+    void emitAssignmentBy(TokenType::Type byType);
     [[nodiscard]] uint16_t emitJump(OpCode op);
     [[nodiscard]] uint32_t emitJumpLong(OpCode op);
     void emitConstant(Value value);

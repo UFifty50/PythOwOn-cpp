@@ -15,8 +15,10 @@
 int32_t g_innermostLoopStart = -1;
 uint16_t g_innermostLoopScopeDepth = 0;
 
+namespace {
 template <typename T>
-static T g_defaultRef = T();
+T g_defaultRef = T();
+}
 
 Compiler::Compiler() : chunk(g_defaultRef<Chunk>), scanner(Scanner("")), parser(Parser()) {
     parser.hadError = false;
@@ -34,7 +36,10 @@ Compiler::Compiler() : chunk(g_defaultRef<Chunk>), scanner(Scanner("")), parser(
     rules[TokenType::COMMA]      = { nullptr,              nullptr,             Precedence::NONE       };
     rules[TokenType::DOT]        = { nullptr,              nullptr,             Precedence::NONE       };
     rules[TokenType::MINUS]      = { &Compiler::unary,     &Compiler::binary,   Precedence::TERM       };
-    rules[TokenType::PLUS]       = { nullptr,              &Compiler::binary,   Precedence::TERM       };
+    rules[TokenType::MINUSMINUS] = { &Compiler::unary,     &Compiler::unary,    Precedence::TERM       };
+    rules[TokenType::MINUS_EQ]   = { nullptr,              &Compiler::binary,   Precedence::ASSIGNMENT };
+    rules[TokenType::PLUS]       = { &Compiler::unary,     &Compiler::binary,   Precedence::TERM       };
+    rules[TokenType::PLUSPLUS]   = { &Compiler::unary,     &Compiler::unary,    Precedence::TERM       };
     rules[TokenType::PERCENT]    = { nullptr,              &Compiler::binary,   Precedence::FACTOR     };
     rules[TokenType::SEMI]       = { nullptr,              nullptr,             Precedence::NONE       };
     rules[TokenType::SLASH]      = { nullptr,              &Compiler::binary,   Precedence::FACTOR     };
@@ -637,10 +642,31 @@ void Compiler::unary(bool) {
     switch (operatorType) {
         case TokenType::NOT: emitByte(OpCode::NOT); break;
         case TokenType::MINUS: emitByte(OpCode::NEGATE); break;
+        case TokenType::MINUSMINUS: emitByte(OpCode::DEC); break;
+        case TokenType::PLUSPLUS: emitByte(OpCode::INC); break;
         default: return; // Unreachable.
     }
     // clang-format on
     // @formatter:on
+}
+
+// Emit an `assignment by` instruction (+=, -=, etc.)
+void Compiler::emitAssignmentBy(const TokenType::Type byType) {
+    const uint32_t var = identifierConstant(&parser.previous);
+
+    if (state.scopeDepth > 0) { emitVariable(OpCode::GET_LOCAL, var); }
+    else { emitVariable(OpCode::GET_GLOBAL, var); }
+
+    expression();
+
+    switch (byType) {
+        case TokenType::MINUS_EQ: emitBytes(OpCode::NEGATE, OpCode::ADD);
+            break;
+        default: return; // Unreachable
+    }
+
+    if (state.scopeDepth > 0) { emitVariable(OpCode::SET_LOCAL, var); }
+    else { emitVariable(OpCode::SET_GLOBAL, var); }
 }
 
 void Compiler::binary(bool) {
@@ -652,6 +678,7 @@ void Compiler::binary(bool) {
     // clang-format off
     switch (operatorType) {
         case TokenType::MINUS:      emitBytes(OpCode::NEGATE, OpCode::ADD);  break;
+        case TokenType::MINUS_EQ:   emitAssignmentBy(TokenType::MINUS_EQ);   break;
         case TokenType::PLUS:       emitByte(OpCode::ADD);                   break;
         case TokenType::SLASH:      emitByte(OpCode::DIVIDE);                break;
         case TokenType::STAR:       emitByte(OpCode::MULTIPLY);              break;

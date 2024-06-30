@@ -17,7 +17,7 @@ public:
         TRUE,
         FALSE,
         POP,
-        POPN,  // TODO: implement (pops n values from stack, useful for end of scope)
+        POPN, // TODO: implement (pops n values from stack, useful for end of scope)
         GET_LOCAL,
         GET_LOCAL_LONG,
         SET_LOCAL,
@@ -49,6 +49,8 @@ public:
         LOOP,
         LOOP_LONG,
         DUP,
+        INC,
+        DEC,
         CALL,
         RETURN,
     };

@@ -165,6 +165,13 @@ InterpretResult VM::Run() {
             case OpCode::DUP: VMstate.stack.push(VMstate.stack.peek(0));
                 break;
 
+            case OpCode::INC: {
+                if (!VMstate.stack.peek(0).isNumber() && !VMstate.stack.peek(
+                    0).isSpecialNumber()) {
+                    RuntimeError("Operand must be a number.");
+                    return InterpretResult::RUNTIME_ERROR;
+                }
+
             case OpCode::EQUAL: Value firstVal = VMstate.stack.pop();
                 Value secondVal = VMstate.stack.pop();
                 VMstate.stack.push(Value::BoolVal(secondVal.isEqualTo(firstVal)));
