@@ -371,12 +371,12 @@ namespace {
 }
 }
 
-std::ostream& operator<<(std::ostream& os, const std::vector<Value>& value) {
+std::ostream& operator<<(std::ostream& os, const std::vector<Value>& values) {
     std::vector<std::string> strTable;
-    std::vector<std::pair<const char*, uint8_t>> valueBytes;
+    std::vector<std::pair<const char*, uint8_t>> valueBytes(values.size());
 
     // first pass
-    for (auto& val : value) { valueBytes.push_back(ValueToBytes(val, strTable)); }
+    for (auto& val : values) { valueBytes.push_back(ValueToBytes(val, strTable)); }
 
     const uint32_t strTableSize = static_cast<uint32_t>(strTable.size());
     os.write(LEtoBEStr<uint32_t>(strTableSize), sizeof(uint32_t));
