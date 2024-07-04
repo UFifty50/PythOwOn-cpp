@@ -3,6 +3,5 @@
 # PythOwOn
 
 ## What is the repository?
-This is a compiler for https://github.com/virejdasani/pythOwO written in C++ - As of yet unfinished.
+This started off as an intepreter for https://github.com/virejdasani/pythOwO, but is now just me learning about language architecture.
 
-This language is inspired by the https://www.craftinginterpreters.com/ book, however differs in many factors.
