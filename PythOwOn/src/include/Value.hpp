@@ -1,17 +1,17 @@
 #ifndef VALUE_HPP
 #define VALUE_HPP
 
-#include <corecrt_math.h>
 
 #include <cmath>
 #include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
-#include <xstring>
+#include <string>
 
 #include "Common.hpp"
 #include "Object.hpp"
+#include <cfloat>
 
 
 enum class ValueType : uint8_t {

@@ -1,3 +1,5 @@
+require "export-compile-commands"
+
 workspace "PythOwOn"
     architecture "x86_64"
     configurations { "Logging", "Debug", "Release"}
@@ -63,11 +65,11 @@ project "PythOwOn"
     filter "system:linux"
         pic "on"
         --    links {}
-        --  defines {}
+        defines { "GCCBUILD" }
 
     filter "system:windows"
-     --   links {}
-     --   defines {}
+        --   links {}
+        defines { "MSVCBUILD" }
 
     filter "toolset:msc*"
         buildoptions { 

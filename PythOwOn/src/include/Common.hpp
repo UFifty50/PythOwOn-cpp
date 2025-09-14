@@ -4,6 +4,7 @@
 #include <bit>
 #include <ostream>
 #include <vector>
+#include <cstdint>
 
 #include "fmt/core.h"
 
@@ -207,7 +208,13 @@ struct Token {
     size_t line = 0;
 };
 
+template <typename T = float>
+[[nodiscard]] static constexpr bool ProxEqual(const T a, const T b,
+                                              const T epsilon = 0.0001) {
+    return std::abs(a - b) < epsilon;
+}
 
+#ifdef MSVCBUILD
 // ReSharper disable once CppInconsistentNaming
 template <class T = void>
 struct lshift {
@@ -228,10 +235,18 @@ struct rshift {
     _NODISCARD constexpr T operator()(const T& left, const T& right) const { return left >> right; }
 };
 
-template <typename T = float>
-[[nodiscard]] static constexpr bool ProxEqual(const T a, const T b,
-                                              const T epsilon = 0.0001) {
-    return std::abs(a - b) < epsilon;
-}
+#elif defined(GCCBUILD)
+template <class T = void>
+struct lshift {
+    [[nodiscard]] constexpr T operator()(const T& left, const T& right) const
+    { return left << right; }
+};
+
+template <class T = void>
+struct rshift {
+    [[nodiscard]] constexpr T operator()(const T& left, const T& right) const
+    { return left >> right; }
+};
+#endif
 
 #endif
